@@ -1,0 +1,25 @@
+{
+  "C_Cpp.intelliSenseEngine": "default",
+  "idf.adapterTargetName": "esp32",
+  "idf.openOcdConfigs": [
+    "interface/ftdi/esp32_devkitj_v1.cfg",
+    "target/esp32.cfg"
+  ],
+  "idf.port": "/dev/cu.usbserial-0001",
+  "idf.flashType": "UART",
+  "C_Cpp.default.compilerPath": "~/.espressif/tools/riscv32-esp-elf/esp-12.2.0_20230208/riscv32-esp-elf/bin/riscv32-esp-elf-gcc",
+  "files.associations": {
+    "*.html": "jinja-html",
+    "*.h": "c",
+    "*.tcc": "c",
+    "random": "c",
+    "regex": "c",
+    "type_traits": "c"
+  },
+  "C_Cpp.vcFormat.indent.braces": false,
+  "C_Cpp.vcFormat.indent.caseContentsWhenBlock": false,
+  "C_Cpp.vcFormat.indent.accessSpecifiers": false,
+  "C_Cpp.inlayHints.autoDeclarationTypes.showOnLeft": true,
+  "C_Cpp.vcFormat.indent.withinParentheses": "indent",
+  "C_Cpp.vcFormat.indent.preserveWithinParentheses": false
+}

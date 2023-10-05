@@ -1,0 +1,21 @@
+{
+  "configurations": [
+    {
+      "name": "ESP-IDF",
+      "cStandard": "c11",
+      "cppStandard": "c++17",
+      "includePath": [
+        "${config:idf.espIdfPath}/components/**",
+        "~/esp/esp-idf-lib/components/**",
+        "${config:idf.espAdfPath}/components/**",
+        "${workspaceFolder}/**",
+        "${workspaceFolder}/build/config"
+      ],
+      "browse": {
+        "limitSymbolsToIncludedHeaders": false
+      },
+      "compilerPath": "/Users/flight/.espressif/tools/xtensa-esp32-elf/esp-12.2.0_20230208/xtensa-esp32-elf/bin/xtensa-esp32-elf-gcc"
+    }
+  ],
+  "version": 4
+}

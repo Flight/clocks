@@ -1,0 +1,33 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      // Can be started by VSCode using the command "OpenOCD Manager"
+      "preLaunchTask": "ESP32C3: Start OpenOCD server",
+      "name": "ESP32C3 GDB Debugger",
+      "type": "cppdbg",
+      "request": "launch",
+      "MIMode": "gdb",
+      "miDebuggerPath": "${command:espIdf.getXtensaGdb}",
+      "program": "${workspaceFolder}/build/${command:espIdf.getProjectName}.elf",
+      "windows": {
+        "program": "${workspaceFolder}\\build\\${command:espIdf.getProjectName}.elf"
+      },
+      "cwd": "${workspaceFolder}",
+      "environment": [
+        { "name": "PATH", "value": "${config:idf.customExtraPaths}" }
+      ],
+      "setupCommands": [
+        { "text": "target extended-remote :3333" },
+        { "text": "set remote hardware-watchpoint-limit 8" },
+        { "text": "mon reset halt" },
+        { "text": "thb app_main" },
+        { "text": "flushregs" }
+      ],
+      "externalConsole": false,
+      "logging": {
+        "engineLogging": true
+      }
+    }
+  ]
+}

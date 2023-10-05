@@ -1,0 +1,128 @@
+menu "CLOCKS GPIO SETTINGS"
+  config ENV_GPIO_RANGE_MIN
+    int
+    default 0
+
+  config ENV_GPIO_RANGE_MAX
+    int
+    default 48
+
+  config LED_GPIO
+    int "Onboard LED GPIO number"
+    range ENV_GPIO_RANGE_MIN ENV_GPIO_RANGE_MAX
+    default 5 if IDF_TARGET_ESP32
+    default 18 if IDF_TARGET_ESP32S2
+    default 48 if IDF_TARGET_ESP32S3
+    default 8
+    help
+      GPIO number (IOxx) for the onboard LED.
+
+  config SDA_PIN
+    int "SDA GPIO number"
+    range ENV_GPIO_RANGE_MIN ENV_GPIO_RANGE_MAX
+    default 21
+    help
+      GPIO number (IOxx) for the IC2 SDA pin.
+      Check the pins schematics of you board to find it.
+
+  config SCL_PIN
+    int "SCL GPIO number"
+    range ENV_GPIO_RANGE_MIN ENV_GPIO_RANGE_MAX
+    default 22
+    help
+      GPIO number (IOxx) for the IC2 SCL pin.
+      Check the pins schematics of you board to find it.
+
+  config TM1637_CLK_PIN
+    int "TM1637 LCD screen CLK GPIO number"
+    range 0 ENV_GPIO_RANGE_MAX
+    default 2
+    help
+        GPIO number (IOxx) for CLK pin of TM1637 display.
+
+        Some GPIOs are used for other purposes (flash connections, etc.) and cannot be used.
+
+        GPIOs 35-39 are input-only so cannot be used to drive the One Wire Bus.
+
+        For ESP8266, GPIO 5 is a good choice.
+
+  config TM1637_DIO_PIN
+    int "TM1637 LCD screen DIO pin GPIO number"
+    range 0 ENV_GPIO_RANGE_MAX
+    default 3
+    help
+        GPIO number (IOxx) for DIO pin of TM1637 display.
+
+        Some GPIOs are used for other purposes (flash connections, etc.) and cannot be used.
+
+        GPIOs 35-39 are input-only so cannot be used to drive the One Wire Bus.
+
+        For ESP8266, GPIO 4 is a good choice.
+
+endmenu
+
+menu "CLOCKS WI-FI SETTINGS"
+  config WIFI_SSID
+      string "WiFi SSID"
+      default "myssid"
+      help
+          SSID (network name) for the example to connect to.
+
+  config WIFI_PASSWORD
+    string "WiFi Password"
+    default "mypassword"
+    help
+      WiFi password (WPA or WPA2) for the example to use.
+
+  choice WIFI_SAE_MODE
+    prompt "WPA3 SAE mode selection"
+    default WIFI_WPA3_SAE_PWE_BOTH
+    help
+      Select mode for SAE as Hunt and Peck, H2E or both.
+    config WIFI_WPA3_SAE_PWE_HUNT_AND_PECK
+      bool "HUNT AND PECK"
+    config WIFI_WPA3_SAE_PWE_HASH_TO_ELEMENT
+      bool "H2E"
+    config WIFI_WPA3_SAE_PWE_BOTH
+      bool "BOTH"
+  endchoice
+
+  config WIFI_PW_ID
+    string "PASSWORD IDENTIFIER"
+    depends on WIFI_WPA3_SAE_PWE_HASH_TO_ELEMENT|| WIFI_WPA3_SAE_PWE_BOTH
+    default ""
+    help
+      password identifier for SAE H2E
+
+  config WIFI_MAXIMUM_RETRY
+    int "Maximum retry"
+    default 5
+    help
+      Set the Maximum retry to avoid station reconnecting to the AP unlimited when the AP is really inexistent.
+
+  choice WIFI_SCAN_AUTH_MODE_THRESHOLD
+    prompt "WiFi Scan auth mode threshold"
+    default WIFI_AUTH_WPA2_PSK
+    help
+      The weakest authmode to accept in the scan mode.
+      This value defaults to WIFI_AUTH_WPA2_PSK incase password is present and WIFI_AUTH_OPEN is used.
+      Please select WIFI_AUTH_WEP/WIFI_AUTH_WPA_PSK incase AP is operating in WEP/WPA mode.
+
+    config WIFI_AUTH_OPEN
+      bool "OPEN"
+    config WIFI_AUTH_WEP
+      bool "WEP"
+    config WIFI_AUTH_WPA_PSK
+      bool "WPA PSK"
+    config WIFI_AUTH_WPA2_PSK
+      bool "WPA2 PSK"
+    config WIFI_AUTH_WPA_WPA2_PSK
+      bool "WPA/WPA2 PSK"
+    config WIFI_AUTH_WPA3_PSK
+      bool "WPA3 PSK"
+    config WIFI_AUTH_WPA2_WPA3_PSK
+      bool "WPA2/WPA3 PSK"
+    config WIFI_AUTH_WAPI_PSK
+      bool "WAPI PSK"
+  endchoice
+endmenu
