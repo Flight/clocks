@@ -9,7 +9,7 @@
 
 #include "sdkconfig.h"
 #include "tm1637.h"
-#include "ntp_event.h"
+#include "global_event_group.h"
 
 static const gpio_num_t DISPLAY_CLK = CONFIG_TM1637_CLK_PIN;
 static const gpio_num_t DISPLAY_DTA = CONFIG_TM1637_DIO_PIN;
@@ -38,7 +38,7 @@ void lcd_tm1637_task(void *pvParameter)
     vTaskDelay(100 / portTICK_PERIOD_MS);
   }
 
-  xEventGroupWaitBits(ntp_event_group, IS_NTP_SET_BIT, pdFALSE, pdTRUE, portMAX_DELAY);
+  xEventGroupWaitBits(global_event_group, IS_NTP_SET_BIT, pdFALSE, pdTRUE, portMAX_DELAY);
 
   while (true)
   {

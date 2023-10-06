@@ -14,9 +14,6 @@
 
 static const char *TAG = "BME680 Sensor";
 
-static bme680_values_float_t values;
-static uint32_t duration;
-
 static const gpio_num_t BME680_SDA_PIN = CONFIG_SDA_PIN;
 static const gpio_num_t BME680_SCL_PIN = CONFIG_SCL_PIN;
 

@@ -9,33 +9,22 @@
 
 #include "wifi.h"
 #include "led.h"
-// #include "display.h"
+#include "display.h"
 #include "temperature.h"
 #include "ntp.h"
-#include "ntp_event.h"
+#include "global_event_group.h"
 
-#define NTP_EVENT_BIT BIT0
-
-EventGroupHandle_t ntp_event_group;
-
-void background_task(void *pvParameter)
-{
-  while (true)
-  {
-    printf("This is the background task, which will run once a 5 seconds.\n");
-    vTaskDelay(5000 / portTICK_PERIOD_MS);
-  }
-}
+EventGroupHandle_t global_event_group;
 
 void app_main(void)
 {
   nvs_flash_init();
-  ntp_event_group = xEventGroupCreate();
+  global_event_group = xEventGroupCreate();
   wifi_connect();
-  ESP_ERROR_CHECK(i2cdev_init());
+  i2cdev_init();
 
   xTaskCreatePinnedToCore(&led_task, "led_task", configMINIMAL_STACK_SIZE * 2, NULL, 1, NULL, 1);
   xTaskCreatePinnedToCore(&ntp_task, "ntp_task", configMINIMAL_STACK_SIZE * 2, NULL, 1, NULL, 1);
-  // xTaskCreatePinnedToCore(&lcd_tm1637_task, "lcd_tm1637_task", 8096, NULL, 1, NULL, 1);
+  xTaskCreatePinnedToCore(&lcd_tm1637_task, "lcd_tm1637_task", configMINIMAL_STACK_SIZE * 8, NULL, 1, NULL, 1);
   xTaskCreatePinnedToCore(temperature_task, "temperature_task", configMINIMAL_STACK_SIZE * 8, NULL, 1, NULL, 1);
 }

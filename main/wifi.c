@@ -5,6 +5,7 @@
 #include <esp_event.h>
 #include <lwip/err.h>
 #include <lwip/sys.h>
+#include "global_event_group.h"
 
 #include "wifi.h"
 
@@ -43,6 +44,7 @@ static void wifi_event_handler(void *event_handler_arg, esp_event_base_t event_b
   {
     ip_event_got_ip_t *event = (ip_event_got_ip_t *)event_data;
     ESP_LOGI(TAG, "Got IP Address: " IPSTR, IP2STR(&event->ip_info.ip));
+    xEventGroupSetBits(global_event_group, WIFI_CONNECTED_BIT);
   }
 }
 

@@ -1,5 +1,10 @@
+.DS_Store
+
+_deps
 build/
+CMakeFiles/
+
+CMakeCache.txt
+
 sdkconfig
 sdkconfig.old
-
-.DS_Store
