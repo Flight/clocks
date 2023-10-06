@@ -1,32 +1,45 @@
 #include <freertos/FreeRTOS.h>
 #include <freertos/task.h>
+#include <time.h>
+#include <sys/time.h>
+#include <esp_log.h>
+#include <esp_netif_sntp.h>
 #include <esp_sntp.h>
+#include <esp_netif.h>
 #include "sdkconfig.h"
 #include "global_event_group.h"
 
 #define SNTP_SERVER "pool.ntp.org"
 
+static const char *TAG = "NTP";
+
 void ntp_task(void *pvParameter)
 {
-  xEventGroupWaitBits(global_event_group, WIFI_CONNECTED_BIT, pdFALSE, pdTRUE, portMAX_DELAY);
+  ESP_LOGI(TAG, "Init started");
+  esp_sntp_config_t config = ESP_NETIF_SNTP_DEFAULT_CONFIG("pool.ntp.org");
 
-  esp_sntp_setoperatingmode(SNTP_OPMODE_POLL);
-  esp_sntp_setservername(0, SNTP_SERVER);
-  esp_sntp_init();
+  ESP_LOGI(TAG, "Waiting for Wi-Fi");
+  xEventGroupWaitBits(global_event_group, IS_WIFI_CONNECTED_BIT, pdFALSE, pdTRUE, portMAX_DELAY);
+
+  esp_netif_sntp_init(&config);
+
+  ESP_LOGI(TAG, "Init done");
 
   while (1)
   {
     // Check if synchronized
-    if (sntp_get_sync_status() == SNTP_SYNC_STATUS_COMPLETED)
+    if (esp_netif_sntp_sync_wait(10000 / portTICK_PERIOD_MS) == ESP_OK)
     {
+      ESP_LOGI(TAG, "Got the time");
       xEventGroupSetBits(global_event_group, IS_NTP_SET_BIT);
+
       // Check NTP time once in 24 hours
       vTaskDelay(86400000 / portTICK_PERIOD_MS);
     }
     else
     {
-      // If not synchronized, delay for a shorter period and check again.
-      vTaskDelay(1000 / portTICK_PERIOD_MS);
+      printf("Failed to update system time within 10s timeout. Trying to repeat in 10 seconds.");
+      vTaskDelay(10000 / portTICK_PERIOD_MS);
     }
   }
 }

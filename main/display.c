@@ -11,6 +11,8 @@
 #include "tm1637.h"
 #include "global_event_group.h"
 
+static const char *TAG = "Display";
+
 static const gpio_num_t DISPLAY_CLK = CONFIG_TM1637_CLK_PIN;
 static const gpio_num_t DISPLAY_DTA = CONFIG_TM1637_DIO_PIN;
 
@@ -21,11 +23,8 @@ void lcd_tm1637_task(void *pvParameter)
 {
   tm1637_led_t *lcd = tm1637_init(DISPLAY_CLK, DISPLAY_DTA);
 
-  // Amsterdam timezone
-  setenv("TZ", "CET-1CEST,M3.5.0,M10.5.0/3", 1);
-  tzset();
-
   tm1637_set_brightness(lcd, MIN_BRIGHTNESS);
+  ESP_LOGI(TAG, "Init done");
 
   uint8_t seg_data[] = {0x01, 0x02, 0x04, 0x08, 0x10, 0x20};
   for (uint8_t x = 0; x < 32; ++x)
@@ -38,20 +37,28 @@ void lcd_tm1637_task(void *pvParameter)
     vTaskDelay(100 / portTICK_PERIOD_MS);
   }
 
+  ESP_LOGI(TAG, "Waiting for time");
   xEventGroupWaitBits(global_event_group, IS_NTP_SET_BIT, pdFALSE, pdTRUE, portMAX_DELAY);
+  ESP_LOGI(TAG, "Got the time");
 
   while (true)
   {
-    time_t now = 0;
+    time_t now;
+    char strftime_buf[64];
+    struct tm timeinfo;
 
-    struct tm timeinfo = {0};
     time(&now);
+    // Set timezone to Amsterdam
+    setenv("TZ", "CET-1CEST,M3.5.0,M10.5.0/3", 1);
+    tzset();
+
     localtime_r(&now, &timeinfo);
+    strftime(strftime_buf, sizeof(strftime_buf), "%c", &timeinfo);
 
     int hours = timeinfo.tm_hour;
     int minutes = timeinfo.tm_min;
 
-    ESP_LOGI("Time", "%i:%i", hours, minutes);
+    ESP_LOGI(TAG, "Time is %i:%i", hours, minutes);
 
     if (hours >= 23 || hours <= 7)
     {
