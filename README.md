@@ -3,19 +3,19 @@
 
 # _Clocks_
 
-(See the README.md file in the upper level 'examples' directory for more information about examples.)
+The basic version of the clocks project, which is using:
 
-This is the simplest buildable example. The example is used by command `idf.py create-project`
-that copies the project to user specified path and set it's name. For more information follow the [docs page](https://docs.espressif.com/projects/esp-idf/en/latest/api-guides/build-system.html#start-a-new-project)
+- ESP32 microcontroller
+- TM1637 7-segment display
+- BME680 environment sensor (temperature)
 
-## How to use example
+It connects to the Wi-Fi and syncs the time with the NTP server, showing the time and temperature on the screen.
 
-We encourage the users to use the example as a template for the new projects.
-A recommended way is to follow the instructions on a [docs page](https://docs.espressif.com/projects/esp-idf/en/latest/api-guides/build-system.html#start-a-new-project).
+The project was created using [ESP-IDF plugin](https://docs.espressif.com/projects/esp-idf/en/latest/esp32/get-started/) for Visual Studio Code and [ESP-IDF-LIB](https://esp-idf-lib.readthedocs.io/en/latest/).
 
-## Example folder contents
+## Folder contents
 
-The project **clocks** contains one source file in C language [main.c](main/main.c). The file is located in folder [main](main).
+The project **clocks-basic** contains one source file in C language [main.c](main/main.c). The file is located in folder [main](main).
 
 ESP-IDF projects are built using CMake. The project build configuration is contained in `CMakeLists.txt`
 files that provide set of directives and instructions describing the project's source files and targets
@@ -28,8 +28,5 @@ Below is short explanation of remaining files in the project folder.
 ├── main
 │   ├── CMakeLists.txt
 │   └── main.c
-└── README.md                  This is the file you are currently reading
+└── README.md
 ```
-
-Additionally, the Clocks contains Makefile and component.mk files, used for the legacy Make based build system.
-They are not used or needed when building with CMake and idf.py.
