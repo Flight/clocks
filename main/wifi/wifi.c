@@ -14,7 +14,7 @@
 #define WIFI_MAXIMUM_RETRY CONFIG_WIFI_MAXIMUM_RETRY
 
 static const char *TAG = "Wi-Fi";
-static int retry_num = 0;
+static uint8_t retry_num = 0;
 
 static void wifi_event_handler(void *event_handler_arg, esp_event_base_t event_base, int32_t event_id, void *event_data)
 {
@@ -67,4 +67,9 @@ void wifi_connect()
   esp_wifi_start();
   esp_wifi_set_mode(WIFI_MODE_STA);
   esp_wifi_connect();
+}
+
+void wifi_disconnect()
+{
+  esp_wifi_disconnect();
 }

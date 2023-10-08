@@ -7,12 +7,13 @@
 #include "sdkconfig.h"
 #include "i2cdev.h"
 
-#include "wifi.h"
-#include "led.h"
-#include "display.h"
-#include "temperature.h"
-#include "ntp.h"
 #include "global_event_group.h"
+
+#include "wifi/wifi.h"
+#include "led/led.h"
+#include "display/display.h"
+#include "temperature/temperature.h"
+#include "time/ntp.h"
 
 EventGroupHandle_t global_event_group;
 
