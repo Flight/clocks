@@ -14,6 +14,7 @@
 #include "display/display.h"
 #include "temperature/temperature.h"
 #include "time/ntp.h"
+#include "light/light.h"
 
 EventGroupHandle_t global_event_group;
 
@@ -27,5 +28,6 @@ void app_main(void)
   xTaskCreatePinnedToCore(&led_task, "led_task", configMINIMAL_STACK_SIZE * 2, NULL, 1, NULL, 1);
   xTaskCreatePinnedToCore(&ntp_task, "ntp_task", configMINIMAL_STACK_SIZE * 2, NULL, 1, NULL, 1);
   xTaskCreatePinnedToCore(&lcd_tm1637_task, "lcd_tm1637_task", configMINIMAL_STACK_SIZE * 8, NULL, 1, NULL, 1);
-  xTaskCreatePinnedToCore(temperature_task, "temperature_task", configMINIMAL_STACK_SIZE * 8, NULL, 1, NULL, 1);
+  xTaskCreatePinnedToCore(&temperature_task, "temperature_task", configMINIMAL_STACK_SIZE * 8, NULL, 1, NULL, 1);
+  xTaskCreatePinnedToCore(&light_sensor_task, "light_sensor_task", configMINIMAL_STACK_SIZE * 8, NULL, 1, NULL, 1);
 }

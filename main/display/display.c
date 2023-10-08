@@ -93,9 +93,9 @@ void show_digit_with_dot(uint8_t digit, uint8_t position)
 static void show_temperature(float temperature)
 {
   uint8_t temp_whole = (uint8_t)temperature; // Extract whole number
-  uint8_t first_whole_digit = abs(temp_whole) / 10;
-  uint8_t second_whole_digit = abs(temp_whole) % 10;
-  uint8_t fraction = (uint8_t)abs(temperature * 10) % 10; // Extract one decimal place
+  uint8_t first_whole_digit = temp_whole / 10;
+  uint8_t second_whole_digit = temp_whole % 10;
+  uint8_t fraction = (uint8_t)temperature * 10 % 10; // Extract one decimal place
 
   // Handle negative temperatures
   bool is_negative = (temperature < 0);
@@ -163,6 +163,15 @@ void lcd_tm1637_task(void *pvParameter)
 
     show_time(hours, minutes, is_column_on);
     is_column_on = !is_column_on;
+
+    if (global_is_light_on)
+    {
+      ESP_LOGI(TAG, "Light is ON");
+    }
+    else
+    {
+      ESP_LOGI(TAG, "Light is OFF");
+    }
 
     vTaskDelay(1000 / portTICK_PERIOD_MS);
   }

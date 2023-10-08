@@ -6,8 +6,11 @@
 #include <esp_netif_sntp.h>
 #include <esp_sntp.h>
 #include <esp_netif.h>
+
 #include "sdkconfig.h"
 #include "global_event_group.h"
+
+#include "ntp.h"
 
 #define SNTP_SERVER "pool.ntp.org"
 

@@ -40,12 +40,6 @@ menu "CLOCKS GPIO SETTINGS"
     help
         GPIO number (IOxx) for CLK pin of TM1637 display.
 
-        Some GPIOs are used for other purposes (flash connections, etc.) and cannot be used.
-
-        GPIOs 35-39 are input-only so cannot be used to drive the One Wire Bus.
-
-        For ESP8266, GPIO 5 is a good choice.
-
   config TM1637_DIO_PIN
     int "TM1637 LCD screen DIO pin GPIO number"
     range 0 ENV_GPIO_RANGE_MAX
@@ -53,11 +47,13 @@ menu "CLOCKS GPIO SETTINGS"
     help
         GPIO number (IOxx) for DIO pin of TM1637 display.
 
-        Some GPIOs are used for other purposes (flash connections, etc.) and cannot be used.
-
-        GPIOs 35-39 are input-only so cannot be used to drive the One Wire Bus.
-
-        For ESP8266, GPIO 4 is a good choice.
+  config LIGHT_SENSOR_PIN
+    int "HW-072 light sensor Data Output (DO) pin GPIO number"
+    range 0 ENV_GPIO_RANGE_MAX
+    default 34
+    help
+        GPIO number (IOxx) for Data Output (DO) pin of HW-072 light sensor.
+        Input only ports can be also used as the sensor is only outputing the data.
 
 endmenu
 

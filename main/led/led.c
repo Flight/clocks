@@ -2,8 +2,9 @@
 #include <freertos/task.h>
 #include <driver/gpio.h>
 
-#include "led.h"
 #include "sdkconfig.h"
+
+#include "led.h"
 
 static const gpio_num_t LED_GPIO = CONFIG_LED_GPIO;
 static bool is_enabled = true;

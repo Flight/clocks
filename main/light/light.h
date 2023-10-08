@@ -1,0 +1,1 @@
+void light_sensor_task(void *pvParameter);
