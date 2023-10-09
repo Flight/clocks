@@ -10,5 +10,5 @@ extern EventGroupHandle_t global_event_group;
 #define IS_OUTSIDE_TEMPERATURE_READING_DONE BIT5
 
 extern bool global_is_light_on;
-extern float global_inside_temperature_sensor_value;
-extern float global_outside_temperature_sensor_value;
+extern float global_inside_temperature;
+extern float global_outside_temperature;

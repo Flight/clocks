@@ -7,10 +7,14 @@
 #include <driver/gpio.h>
 #include <esp_log.h>
 #include <stdlib.h>
+#include <math.h>
+#include <string.h>
 
 #include "sdkconfig.h"
 #include "tm1637.h"
 #include "global_event_group.h"
+
+#include "display.h"
 
 static const char *TAG = "Display";
 
@@ -19,9 +23,20 @@ static const gpio_num_t DISPLAY_DTA = CONFIG_TM1637_DIO_PIN;
 
 uint8_t MIN_BRIGHTNESS = 1;
 uint8_t MAX_BRIGHTNESS = 7;
-static int8_t current_brightness = 1;
+static uint8_t current_brightness = 1;
+static uint8_t SEGMENT_COUNT = 3;
+static uint8_t SECONDS_UNTIL_TEMPERATURE_SHOWN = 20;
+static uint8_t SECONDS_TO_SHOW_TEMPERATURE = 5;
 
 tm1637_led_t *lcd;
+
+static void show_dashes()
+{
+  for (uint8_t segment = 0; segment < SEGMENT_COUNT + 1; segment++)
+  {
+    tm1637_set_segment_raw(lcd, segment, 0x40);
+  }
+}
 
 static void check_segments()
 {
@@ -29,12 +44,13 @@ static void check_segments()
   for (uint8_t x = 0; x < 32; ++x)
   {
     uint8_t v_seg_data = seg_data[x % 6];
-    tm1637_set_segment_raw(lcd, 0, v_seg_data);
-    tm1637_set_segment_raw(lcd, 1, v_seg_data);
-    tm1637_set_segment_raw(lcd, 2, v_seg_data);
-    tm1637_set_segment_raw(lcd, 3, v_seg_data);
+    for (uint8_t segment = 0; segment < SEGMENT_COUNT + 1; segment++)
+    {
+      tm1637_set_segment_raw(lcd, segment, v_seg_data);
+    }
     vTaskDelay(100 / portTICK_PERIOD_MS);
   }
+  show_dashes();
 }
 
 static void change_brightness_smoothly(int new_brightness)
@@ -43,7 +59,8 @@ static void change_brightness_smoothly(int new_brightness)
 
   for (uint8_t brightness_step = 0; brightness_step < abs(difference); brightness_step++)
   {
-    tm1637_set_number(lcd, 8888);
+    show_dashes();
+
     if (difference > 0)
     {
       current_brightness++;
@@ -65,73 +82,53 @@ static void show_time(uint8_t hours, uint8_t minutes, bool is_column_on)
   tm1637_set_segment_number(lcd, 3, minutes % 10, false);
 }
 
-void static clear_segments()
-{
-  for (uint8_t segment = 0; segment < 4; segment++)
-  {
-    tm1637_set_segment_raw(lcd, segment, 0x00);
-  }
-}
-
-void show_digit_with_dot(uint8_t digit, uint8_t position)
-{
-  // Array to map digits to their 7-segment encodings
-  static const uint8_t segment_map[] = {
-      0x3F, 0x06, 0x5B, 0x4F,
-      0x66, 0x6D, 0x7D, 0x07,
-      0x7F, 0x6F};
-
-  // Get the raw segment value for the digit
-  uint8_t raw_value = segment_map[digit];
-
-  // Add the dot by setting the least significant bit
-  raw_value |= 0x01;
-
-  tm1637_set_segment_raw(lcd, position, raw_value);
-}
-
 static void show_temperature(float temperature)
 {
-  uint8_t temp_whole = (uint8_t)temperature; // Extract whole number
-  uint8_t first_whole_digit = temp_whole / 10;
-  uint8_t second_whole_digit = temp_whole % 10;
-  uint8_t fraction = (uint8_t)temperature * 10 % 10; // Extract one decimal place
+  char temperature_string[10];
 
-  // Handle negative temperatures
-  bool is_negative = (temperature < 0);
+  // Convert the  float to unsigned string with 2 decimal places
+  sprintf(temperature_string, "%.2f", fabs(temperature));
+  ESP_LOGI(TAG, "Temp string: %s", temperature_string);
 
-  clear_segments();
+  uint8_t digits_start_segment = 0;
 
-  if (is_negative)
+  if (temperature < 0)
   {
-    tm1637_set_segment_raw(lcd, 0, 0x40);                        // Display minus sign
-    tm1637_set_segment_number(lcd, 1, first_whole_digit, false); // Display tens place
-    tm1637_set_segment_number(lcd, 2, second_whole_digit, true); // Display units place with decimal point
-    tm1637_set_segment_number(lcd, 3, fraction, false);          // Display tenths place after the decimal point
+    tm1637_set_segment_raw(lcd, 0, 0x40); // Minus sign
+    digits_start_segment = 1;             // Adjust the starting segment if negative
   }
-  else
+
+  for (uint8_t segment = digits_start_segment, i = 0; segment < SEGMENT_COUNT - digits_start_segment && i < strlen(temperature_string); i++)
   {
-    tm1637_set_segment_number(lcd, 0, first_whole_digit / 10, false); // Display tens place
-    tm1637_set_segment_number(lcd, 1, second_whole_digit, true);      // Display units place with decimal point
-    tm1637_set_segment_number(lcd, 2, fraction, false);               // Display tenths place after the decimal point
-    tm1637_set_segment_raw(lcd, 3, 0x46);                             // Display small C on the last segment
+    if (temperature_string[i] != '.')
+    {
+      ESP_LOGI(TAG, "temperature_string[i]: %i", temperature_string[i] - '0');
+      ESP_LOGI(TAG, "Segment: %i. Showing digit: %i", segment, temperature_string[i] - '0');
+      tm1637_set_segment_number(lcd, segment, temperature_string[i] - '0', temperature_string[i + 1] == '.');
+      segment++;
+    }
   }
+
+  tm1637_set_segment_raw(lcd, 3, 0xe3); // degree sign
 }
 
 void lcd_tm1637_task(void *pvParameter)
 {
   bool is_column_on = true;
+  u_int8_t seconds_time_shown = 0;
   lcd = tm1637_init(DISPLAY_CLK, DISPLAY_DTA);
 
-  tm1637_set_brightness(lcd, current_brightness);
+  // tm1637_set_brightness(lcd, current_brightness);
+  tm1637_set_brightness(lcd, MAX_BRIGHTNESS);
   ESP_LOGI(TAG, "Init done");
 
   check_segments();
 
-  ESP_LOGI(TAG, "Waiting for time");
-  xEventGroupWaitBits(global_event_group, IS_NTP_SET_BIT, pdFALSE, pdTRUE, portMAX_DELAY);
-  ESP_LOGI(TAG, "Got the time");
+  // ESP_LOGI(TAG, "Waiting for time");
+  // xEventGroupWaitBits(global_event_group, IS_NTP_SET_BIT, pdFALSE, pdTRUE, portMAX_DELAY);
+  // ESP_LOGI(TAG, "Got the time");
 
+  // Set timezone to Amsterdam
   setenv("TZ", "CET-1CEST,M3.5.0,M10.5.0/3", 1);
   tzset();
 
@@ -140,9 +137,9 @@ void lcd_tm1637_task(void *pvParameter)
     time_t now;
     char strftime_buf[64];
     struct tm timeinfo;
+    seconds_time_shown++;
 
     time(&now);
-    // Set timezone to Amsterdam
 
     localtime_r(&now, &timeinfo);
     strftime(strftime_buf, sizeof(strftime_buf), "%c", &timeinfo);
@@ -150,33 +147,52 @@ void lcd_tm1637_task(void *pvParameter)
     uint8_t hours = timeinfo.tm_hour;
     uint8_t minutes = timeinfo.tm_min;
 
-    ESP_LOGI(TAG, "Time is %i:%i", hours, minutes);
-
-    if (hours >= 23 || hours <= 7)
+    if (IS_LIGHT_SENSOR_READING_DONE && global_is_light_on)
     {
-      change_brightness_smoothly(MIN_BRIGHTNESS);
+      change_brightness_smoothly(MAX_BRIGHTNESS);
     }
     else
     {
-      change_brightness_smoothly(MAX_BRIGHTNESS);
+      change_brightness_smoothly(MIN_BRIGHTNESS);
+    }
+
+    if (IS_INSIDE_TEMPERATURE_READING_DONE && global_inside_temperature && seconds_time_shown > SECONDS_UNTIL_TEMPERATURE_SHOWN)
+    {
+      show_temperature(global_inside_temperature);
+      vTaskDelay(SECONDS_TO_SHOW_TEMPERATURE * 1000 / portTICK_PERIOD_MS);
+      seconds_time_shown = 0;
+
+      continue;
     }
 
     show_time(hours, minutes, is_column_on);
     is_column_on = !is_column_on;
-
-    if (global_is_light_on)
-    {
-      ESP_LOGI(TAG, "Light is ON");
-    }
-    else
-    {
-      ESP_LOGI(TAG, "Light is OFF");
-    }
-
     vTaskDelay(1000 / portTICK_PERIOD_MS);
   }
-}
 
-// global_light_sensor_value
-// global_inside_temperature_sensor_value
-// global_outside_temperature_sensor_value
+  // while (true)
+  // {
+  //   show_temperature(global_inside_temperature);
+  //   vTaskDelay(20000 / portTICK_PERIOD_MS);
+  //   show_temperature(345.678);
+  //   vTaskDelay(20000 / portTICK_PERIOD_MS);
+  //   show_temperature(53.445);
+  //   vTaskDelay(20000 / portTICK_PERIOD_MS);
+  //   show_temperature(12.349);
+  //   vTaskDelay(20000 / portTICK_PERIOD_MS);
+  //   show_temperature(2.435);
+  //   vTaskDelay(20000 / portTICK_PERIOD_MS);
+  //   show_temperature(0.445);
+  //   vTaskDelay(20000 / portTICK_PERIOD_MS);
+  //   show_temperature(-0.781);
+  //   vTaskDelay(20000 / portTICK_PERIOD_MS);
+  //   show_temperature(-1.123);
+  //   vTaskDelay(20000 / portTICK_PERIOD_MS);
+  //   show_temperature(-4.353);
+  //   vTaskDelay(20000 / portTICK_PERIOD_MS);
+  //   show_temperature(-43.323);
+  //   vTaskDelay(20000 / portTICK_PERIOD_MS);
+  //   show_temperature(-768.323);
+  //   vTaskDelay(20000 / portTICK_PERIOD_MS);
+  // }
+}

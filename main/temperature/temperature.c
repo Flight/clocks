@@ -6,6 +6,7 @@
 
 #include "sdkconfig.h"
 #include "bme680.h"
+#include "global_event_group.h"
 
 #include "temperature.h"
 
@@ -16,6 +17,8 @@ static const char *TAG = "BME680 Sensor";
 
 static const gpio_num_t BME680_SDA_PIN = CONFIG_SDA_PIN;
 static const gpio_num_t BME680_SCL_PIN = CONFIG_SCL_PIN;
+
+float global_inside_temperature;
 
 void temperature_task(void *pvParameter)
 {
@@ -41,6 +44,7 @@ void temperature_task(void *pvParameter)
       {
         ESP_LOGI(TAG, "BME680 Sensor: %.2f °C, %.2f %%",
                  values.temperature, values.humidity);
+        global_inside_temperature = values.temperature;
       }
     }
 

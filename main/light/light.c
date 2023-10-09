@@ -21,12 +21,14 @@ static void main_isr_handler(void *arg)
 
 void light_sensor_task(void *pvParameter)
 {
+  ESP_LOGI(TAG, "Init start");
   gpio_reset_pin(LIGHT_SENSOR_PIN);
   gpio_set_direction(LIGHT_SENSOR_PIN, GPIO_MODE_DEF_INPUT);
   gpio_set_pull_mode(LIGHT_SENSOR_PIN, GPIO_PULLUP_PULLDOWN);
   gpio_set_intr_type(LIGHT_SENSOR_PIN, GPIO_INTR_NEGEDGE);
   gpio_install_isr_service(0);
   gpio_isr_handler_add(LIGHT_SENSOR_PIN, main_isr_handler, NULL);
+  ESP_LOGI(TAG, "Init done");
 
   while (1)
   {
