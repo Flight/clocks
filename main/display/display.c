@@ -24,7 +24,7 @@ static const gpio_num_t DISPLAY_DTA = CONFIG_TM1637_DIO_PIN;
 uint8_t MIN_BRIGHTNESS = 1;
 uint8_t MAX_BRIGHTNESS = 7;
 static uint8_t current_brightness = 1;
-static uint8_t SEGMENT_COUNT = 3;
+static uint8_t SEGMENTS_AMOUNT = 4;
 static uint8_t SECONDS_UNTIL_TEMPERATURE_SHOWN = 20;
 static uint8_t SECONDS_TO_SHOW_TEMPERATURE = 5;
 
@@ -32,7 +32,7 @@ tm1637_led_t *lcd;
 
 static void show_dashes()
 {
-  for (uint8_t segment = 0; segment < SEGMENT_COUNT + 1; segment++)
+  for (uint8_t segment = 0; segment < SEGMENTS_AMOUNT; segment++)
   {
     tm1637_set_segment_raw(lcd, segment, 0x40);
   }
@@ -44,7 +44,7 @@ static void check_segments()
   for (uint8_t x = 0; x < 32; ++x)
   {
     uint8_t v_seg_data = seg_data[x % 6];
-    for (uint8_t segment = 0; segment < SEGMENT_COUNT + 1; segment++)
+    for (uint8_t segment = 0; segment < SEGMENTS_AMOUNT; segment++)
     {
       tm1637_set_segment_raw(lcd, segment, v_seg_data);
     }
@@ -84,32 +84,36 @@ static void show_time(uint8_t hours, uint8_t minutes, bool is_column_on)
 
 static void show_temperature(float temperature)
 {
-  char temperature_string[10];
+  int8_t rounded_temperature = (int8_t)roundf(temperature);
+  char temperature_string[5];
 
-  // Convert the  float to unsigned string with 2 decimal places
-  sprintf(temperature_string, "%.2f", fabs(temperature));
-  ESP_LOGI(TAG, "Temp string: %s", temperature_string);
+  // Convert the temperature to string
+  sprintf(temperature_string, "%d", rounded_temperature);
 
-  uint8_t digits_start_segment = 0;
+  int8_t index = strlen(temperature_string) - 1;
 
-  if (temperature < 0)
+  for (int8_t segment_index = SEGMENTS_AMOUNT - 2; segment_index >= 0; segment_index--, index--)
   {
-    tm1637_set_segment_raw(lcd, 0, 0x40); // Minus sign
-    digits_start_segment = 1;             // Adjust the starting segment if negative
-  }
-
-  for (uint8_t segment = digits_start_segment, i = 0; segment < SEGMENT_COUNT - digits_start_segment && i < strlen(temperature_string); i++)
-  {
-    if (temperature_string[i] != '.')
+    if (index < 0)
     {
-      ESP_LOGI(TAG, "temperature_string[i]: %i", temperature_string[i] - '0');
-      ESP_LOGI(TAG, "Segment: %i. Showing digit: %i", segment, temperature_string[i] - '0');
-      tm1637_set_segment_number(lcd, segment, temperature_string[i] - '0', temperature_string[i + 1] == '.');
-      segment++;
+      // Clear segment
+      tm1637_set_segment_raw(lcd, segment_index, 0);
+      continue;
     }
+
+    if (temperature_string[index] == '-')
+    {
+      // Minus sign
+      tm1637_set_segment_raw(lcd, segment_index, 0x40);
+      continue;
+    }
+
+    // Digit
+    tm1637_set_segment_number(lcd, segment_index, temperature_string[index] - '0', false);
   }
 
-  tm1637_set_segment_raw(lcd, 3, 0xe3); // degree sign
+  // degree sign
+  tm1637_set_segment_raw(lcd, 3, 0xe3);
 }
 
 void lcd_tm1637_task(void *pvParameter)
@@ -118,15 +122,14 @@ void lcd_tm1637_task(void *pvParameter)
   u_int8_t seconds_time_shown = 0;
   lcd = tm1637_init(DISPLAY_CLK, DISPLAY_DTA);
 
-  // tm1637_set_brightness(lcd, current_brightness);
-  tm1637_set_brightness(lcd, MAX_BRIGHTNESS);
+  tm1637_set_brightness(lcd, current_brightness);
   ESP_LOGI(TAG, "Init done");
 
   check_segments();
 
-  // ESP_LOGI(TAG, "Waiting for time");
-  // xEventGroupWaitBits(global_event_group, IS_NTP_SET_BIT, pdFALSE, pdTRUE, portMAX_DELAY);
-  // ESP_LOGI(TAG, "Got the time");
+  ESP_LOGI(TAG, "Waiting for time");
+  xEventGroupWaitBits(global_event_group, IS_NTP_SET_BIT, pdFALSE, pdTRUE, portMAX_DELAY);
+  ESP_LOGI(TAG, "Got the time");
 
   // Set timezone to Amsterdam
   setenv("TZ", "CET-1CEST,M3.5.0,M10.5.0/3", 1);
@@ -169,30 +172,4 @@ void lcd_tm1637_task(void *pvParameter)
     is_column_on = !is_column_on;
     vTaskDelay(1000 / portTICK_PERIOD_MS);
   }
-
-  // while (true)
-  // {
-  //   show_temperature(global_inside_temperature);
-  //   vTaskDelay(20000 / portTICK_PERIOD_MS);
-  //   show_temperature(345.678);
-  //   vTaskDelay(20000 / portTICK_PERIOD_MS);
-  //   show_temperature(53.445);
-  //   vTaskDelay(20000 / portTICK_PERIOD_MS);
-  //   show_temperature(12.349);
-  //   vTaskDelay(20000 / portTICK_PERIOD_MS);
-  //   show_temperature(2.435);
-  //   vTaskDelay(20000 / portTICK_PERIOD_MS);
-  //   show_temperature(0.445);
-  //   vTaskDelay(20000 / portTICK_PERIOD_MS);
-  //   show_temperature(-0.781);
-  //   vTaskDelay(20000 / portTICK_PERIOD_MS);
-  //   show_temperature(-1.123);
-  //   vTaskDelay(20000 / portTICK_PERIOD_MS);
-  //   show_temperature(-4.353);
-  //   vTaskDelay(20000 / portTICK_PERIOD_MS);
-  //   show_temperature(-43.323);
-  //   vTaskDelay(20000 / portTICK_PERIOD_MS);
-  //   show_temperature(-768.323);
-  //   vTaskDelay(20000 / portTICK_PERIOD_MS);
-  // }
 }
