@@ -18,7 +18,7 @@ static const char *TAG = "BME680 Sensor";
 static const gpio_num_t BME680_SDA_PIN = CONFIG_SDA_PIN;
 static const gpio_num_t BME680_SCL_PIN = CONFIG_SCL_PIN;
 
-float global_inside_temperature;
+static const uint8_t REFRESH_INTERVAL_MINS = 1;
 
 void temperature_task(void *pvParameter)
 {
@@ -48,6 +48,6 @@ void temperature_task(void *pvParameter)
       }
     }
 
-    vTaskDelay(10000 / portTICK_PERIOD_MS);
+    vTaskDelay(1000 * 60 * REFRESH_INTERVAL_MINS / portTICK_PERIOD_MS);
   }
 }

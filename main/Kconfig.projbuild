@@ -54,21 +54,20 @@ menu "CLOCKS GPIO SETTINGS"
     help
         GPIO number (IOxx) for Data Output (DO) pin of HW-072 light sensor.
         Input only ports can be also used as the sensor is only outputing the data.
-
 endmenu
 
 menu "CLOCKS WI-FI SETTINGS"
   config WIFI_SSID
-      string "WiFi SSID"
-      default "myssid"
-      help
-          SSID (network name) for the example to connect to.
+    string "Wi-Fi SSID"
+    default "myssid"
+    help
+        SSID (network name) for the example to connect to.
 
   config WIFI_PASSWORD
-    string "WiFi Password"
+    string "Wi-Fi Password"
     default "mypassword"
     help
-      WiFi password (WPA or WPA2) for the example to use.
+      Wi-Fi password (WPA or WPA2) for the example to use.
 
   choice WIFI_SAE_MODE
     prompt "WPA3 SAE mode selection"
@@ -121,4 +120,25 @@ menu "CLOCKS WI-FI SETTINGS"
     config WIFI_AUTH_WAPI_PSK
       bool "WAPI PSK"
   endchoice
+endmenu
+
+menu "CLOCKS TIMEZONE SETTINGS"
+  config TIMEZONE
+    string "Timezone"
+    default "CET-1CEST,M3.5.0,M10.5.0/3"
+    help
+      https://docs.espressif.com/projects/esp-idf/en/latest/esp32/api-reference/system/system_time.html?highlight=timezone#timezones (Default is Amsterdam)
+endmenu
+
+menu "CLOCKS WEATHER API SETTINGS"
+  config WEATHER_API_KEY
+    string "Weather API key (weatherapi.com)"
+    help
+      Go to https://www.weatherapi.com and check your key
+
+  config WEATHER_CITY
+    string "Weather City"
+    help
+      City to get the current weather.
+    default "Amsterdam"
 endmenu

@@ -2,8 +2,6 @@
 #include <freertos/FreeRTOS.h>
 #include <freertos/task.h>
 #include <time.h>
-#include <sys/time.h>
-#include <esp_system.h>
 #include <driver/gpio.h>
 #include <esp_log.h>
 #include <stdlib.h>
@@ -130,10 +128,6 @@ void lcd_tm1637_task(void *pvParameter)
   ESP_LOGI(TAG, "Waiting for time");
   xEventGroupWaitBits(global_event_group, IS_NTP_SET_BIT, pdFALSE, pdTRUE, portMAX_DELAY);
   ESP_LOGI(TAG, "Got the time");
-
-  // Set timezone to Amsterdam
-  setenv("TZ", "CET-1CEST,M3.5.0,M10.5.0/3", 1);
-  tzset();
 
   while (true)
   {
