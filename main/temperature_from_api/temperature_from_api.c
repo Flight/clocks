@@ -148,6 +148,7 @@ void temperature_from_api_task(void *pvParameter)
         .event_handler = _http_event_handle,
         .disable_auto_redirect = true,
         .cert_pem = api_weatherapi_com_pem_start,
+        .timeout_ms = 20000,
         .buffer_size = 2048};
 
     esp_http_client_handle_t client = esp_http_client_init(&config);
