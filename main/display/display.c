@@ -131,6 +131,8 @@ void lcd_tm1637_task(void *pvParameter)
 
   while (true)
   {
+    EventBits_t uxBits = xEventGroupGetBits(global_event_group);
+
     time_t now;
     char strftime_buf[64];
     struct tm timeinfo;
@@ -144,7 +146,7 @@ void lcd_tm1637_task(void *pvParameter)
     uint8_t hours = timeinfo.tm_hour;
     uint8_t minutes = timeinfo.tm_min;
 
-    if (IS_LIGHT_SENSOR_READING_DONE && global_is_light_on)
+    if (uxBits & IS_LIGHT_SENSOR_READING_DONE_BIT && global_is_light_on)
     {
       change_brightness_smoothly(MAX_BRIGHTNESS);
     }
@@ -153,12 +155,21 @@ void lcd_tm1637_task(void *pvParameter)
       change_brightness_smoothly(MIN_BRIGHTNESS);
     }
 
-    if (IS_INSIDE_TEMPERATURE_READING_DONE && global_inside_temperature && seconds_time_shown > SECONDS_UNTIL_TEMPERATURE_SHOWN)
+    if (seconds_time_shown > SECONDS_UNTIL_TEMPERATURE_SHOWN)
     {
-      show_temperature(global_inside_temperature);
-      vTaskDelay(SECONDS_TO_SHOW_TEMPERATURE * 1000 / portTICK_PERIOD_MS);
-      seconds_time_shown = 0;
+      if (uxBits & IS_INSIDE_TEMPERATURE_READING_DONE_BIT && global_inside_temperature)
+      {
+        show_temperature(global_inside_temperature);
+        vTaskDelay(SECONDS_TO_SHOW_TEMPERATURE * 1000 / portTICK_PERIOD_MS);
+      }
 
+      if (uxBits & IS_OUTSIDE_TEMPERATURE_READING_DONE_BIT && global_outside_temperature)
+      {
+        show_temperature(global_outside_temperature);
+        vTaskDelay(SECONDS_TO_SHOW_TEMPERATURE * 1000 / portTICK_PERIOD_MS);
+      }
+
+      seconds_time_shown = 0;
       continue;
     }
 

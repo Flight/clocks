@@ -15,7 +15,7 @@ bool global_is_light_on = false;
 
 static void main_isr_handler(void *arg)
 {
-  xEventGroupSetBits(global_event_group, IS_LIGHT_SENSOR_READING_DONE);
+  xEventGroupSetBits(global_event_group, IS_LIGHT_SENSOR_READING_DONE_BIT);
   global_is_light_on = !gpio_get_level(LIGHT_SENSOR_PIN);
 }
 

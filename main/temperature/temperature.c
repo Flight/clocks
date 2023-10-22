@@ -20,6 +20,8 @@ static const gpio_num_t BME680_SCL_PIN = CONFIG_SCL_PIN;
 
 static const uint8_t REFRESH_INTERVAL_MINS = 1;
 
+float global_inside_temperature;
+
 void temperature_task(void *pvParameter)
 {
   bme680_t sensor;
@@ -45,6 +47,7 @@ void temperature_task(void *pvParameter)
         ESP_LOGI(TAG, "BME680 Sensor: %.2f °C, %.2f %%",
                  values.temperature, values.humidity);
         global_inside_temperature = values.temperature;
+        xEventGroupSetBits(global_event_group, IS_INSIDE_TEMPERATURE_READING_DONE_BIT);
       }
     }
 

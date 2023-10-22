@@ -8,101 +8,170 @@
 
 #include "temperature_from_api.h"
 
-#define MAX_HTTP_OUTPUT_BUFFER 2048
-
 static const char *TAG = "Weather API";
 
 static const char *WEATHER_API_URL = "https://api.weatherapi.com/v1/";
 static const char *WEATHER_API_KEY = CONFIG_WEATHER_API_KEY;
 static const char *WEATHER_CITY = CONFIG_WEATHER_CITY;
 
-static const uint8_t REFRESH_INTERVAL_MINS = 30;
+static const uint8_t REFRESH_INTERVAL_MINS = 5;
+static const uint8_t MAX_RETRIES = 3;
 
-float global_inside_temperature;
 float global_outside_temperature;
 
 extern const char api_weatherapi_com_pem_start[] asm("_binary_api_weatherapi_com_pem_start");
 extern const char api_weatherapi_com_pem_end[] asm("_binary_api_weatherapi_com_pem_end");
 
+#define MAX_JSON_SIZE 2048
+static char json_buffer[MAX_JSON_SIZE];
+static int json_buffer_index = 0;
+
+static int retry_count = 0;
+
+float get_temperature_from_json(char *json_string)
+{
+  float temperature = -1000;
+
+  ESP_LOGI(TAG, "JSON string: %s", json_string);
+
+  cJSON *response_json = cJSON_Parse(json_string);
+  if (response_json != NULL)
+  {
+    cJSON *current = cJSON_GetObjectItem(response_json, "current");
+    if (current != NULL)
+    {
+      cJSON *temperature_json = cJSON_GetObjectItem(current, "temp_c");
+      if (temperature_json != NULL && cJSON_IsNumber(temperature_json))
+      {
+        float temperature = temperature_json->valuedouble;
+        return temperature;
+      }
+      else
+      {
+        ESP_LOGE(TAG, "Failed to get 'temp_c' or it's not a number");
+      }
+    }
+    else
+    {
+      ESP_LOGE(TAG, "Failed to get 'current' from JSON response");
+    }
+    cJSON_Delete(response_json);
+  }
+  else
+  {
+    ESP_LOGE(TAG, "Failed to parse JSON response");
+  }
+
+  return temperature;
+}
+
 esp_err_t _http_event_handle(esp_http_client_event_t *evt)
 {
+  esp_err_t status_code = ESP_OK;
+
   switch (evt->event_id)
   {
   case HTTP_EVENT_ERROR:
-    ESP_LOGI(TAG, "HTTP_EVENT_ERROR");
+    ESP_LOGE(TAG, "HTTP_EVENT_ERROR");
+    status_code = ESP_ERR_HTTP_BASE;
     break;
+
   case HTTP_EVENT_REDIRECT:
     ESP_LOGI(TAG, "HTTP_EVENT_REDIRECT");
+    status_code = ESP_ERR_HTTP_BASE;
     break;
+
   case HTTP_EVENT_ON_CONNECTED:
     ESP_LOGI(TAG, "HTTP_EVENT_ON_CONNECTED");
     break;
+
   case HTTP_EVENT_HEADER_SENT:
     ESP_LOGI(TAG, "HTTP_EVENT_HEADER_SENT");
     break;
+
   case HTTP_EVENT_ON_HEADER:
     ESP_LOGI(TAG, "HTTP_EVENT_ON_HEADER");
     printf("%.*s", evt->data_len, (char *)evt->data);
     break;
+
   case HTTP_EVENT_ON_DATA:
     ESP_LOGI(TAG, "HTTP_EVENT_ON_DATA, len=%d", evt->data_len);
     if (!esp_http_client_is_chunked_response(evt->client))
     {
-      printf("%.*s", evt->data_len, (char *)evt->data);
+      if (json_buffer_index + evt->data_len < MAX_JSON_SIZE)
+      {
+        memcpy(json_buffer + json_buffer_index, evt->data, evt->data_len);
+        json_buffer_index += evt->data_len;
+      }
+      else
+      {
+        ESP_LOGE(TAG, "JSON buffer overflow");
+      }
     }
-
     break;
+
   case HTTP_EVENT_ON_FINISH:
     ESP_LOGI(TAG, "HTTP_EVENT_ON_FINISH");
+    json_buffer[json_buffer_index] = '\0'; // Null terminate the JSON string
+    float temperature = get_temperature_from_json(json_buffer);
+    if (temperature == -1000 || strlen(json_buffer) == 0)
+    {
+      ESP_LOGE(TAG, "Can't get temperature");
+      status_code = ESP_ERR_INVALID_RESPONSE;
+    }
+    else
+    {
+      ESP_LOGI(TAG, "Temperature is %f", temperature);
+      global_outside_temperature = temperature;
+      xEventGroupSetBits(global_event_group, IS_OUTSIDE_TEMPERATURE_READING_DONE_BIT);
+    }
+    json_buffer_index = 0; // Reset for next request
     break;
+
   case HTTP_EVENT_DISCONNECTED:
     ESP_LOGI(TAG, "HTTP_EVENT_DISCONNECTED");
     break;
   }
-  return ESP_OK;
+
+  return status_code;
 }
 
 void temperature_from_api_task(void *pvParameter)
 {
-  ESP_LOGI(TAG, "temperature_from_api_task started!");
-  // Declare local_response_buffer with size (MAX_HTTP_OUTPUT_BUFFER + 1) to prevent out of bound access when
-  // it is used by functions like strlen(). The buffer should only be used upto size MAX_HTTP_OUTPUT_BUFFER
-  char local_response_buffer[MAX_HTTP_OUTPUT_BUFFER + 1] = {0};
   char full_url[256];
   sprintf(full_url, "%scurrent.json?key=%s&q=%s&aqi=no", WEATHER_API_URL, WEATHER_API_KEY, WEATHER_CITY);
-
-  esp_http_client_config_t config = {
-      .url = full_url,
-      .event_handler = _http_event_handle,
-      .user_data = local_response_buffer,
-      .disable_auto_redirect = true,
-      .cert_pem = api_weatherapi_com_pem_start};
 
   ESP_LOGI(TAG, "Waiting for Wi-Fi");
   xEventGroupWaitBits(global_event_group, IS_WIFI_CONNECTED_BIT, pdFALSE, pdTRUE, portMAX_DELAY);
 
   while (1)
   {
-    esp_http_client_handle_t client = esp_http_client_init(&config);
-    esp_err_t err = esp_http_client_perform(client);
+    esp_http_client_config_t config = {
+        .url = full_url,
+        .event_handler = _http_event_handle,
+        .disable_auto_redirect = true,
+        .cert_pem = api_weatherapi_com_pem_start};
 
-    if (err == ESP_OK)
+    esp_http_client_handle_t client = esp_http_client_init(&config);
+
+    while (retry_count < MAX_RETRIES)
     {
-      // ESP_LOGI(TAG, "Status = %x, content_length = %x",
-      //          esp_http_client_get_status_code(client),
-      //          esp_http_client_get_content_length(client));
-      ESP_LOG_BUFFER_HEX(TAG, local_response_buffer, strlen(local_response_buffer));
-      // cJSON *response_json = cJSON_Parse(local_response_buffer);
-      // cJSON *current = cJSON_GetObjectItem(response_json, "current");
-      // float temperature = cJSON_GetObjectItem(current, "temp_c")->valuedouble;
-      // ESP_LOGI(TAG, "temperature is %f", temperature);
-    }
-    else
-    {
-      ESP_LOGE(TAG, "HTTP GET request failed: %s", esp_err_to_name(err));
+      esp_err_t err = esp_http_client_perform(client);
+
+      ESP_LOGI(TAG, "err: %s", esp_err_to_name(err));
+
+      if (err == ESP_OK)
+      {
+        break;
+      }
+
+      ESP_LOGW(TAG, "HTTP GET request failed (attempt %d): %s", retry_count + 1, esp_err_to_name(err));
+      vTaskDelay(1000 * 10 / portTICK_PERIOD_MS);
+      retry_count++;
     }
 
     esp_http_client_cleanup(client);
+    retry_count = 0;
     vTaskDelay(1000 * 60 * REFRESH_INTERVAL_MINS / portTICK_PERIOD_MS);
   }
 }
