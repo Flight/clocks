@@ -14,7 +14,7 @@
       "browse": {
         "limitSymbolsToIncludedHeaders": false
       },
-      "compilerPath": "/Users/flight/.espressif/tools/xtensa-esp32-elf/esp-12.2.0_20230208/xtensa-esp32-elf/bin/xtensa-esp32-elf-gcc"
+      "compilerPath": "${config:idf.toolsPath}/tools/riscv32-esp-elf/esp-12.2.0_20230208/riscv32-esp-elf/bin/riscv32-esp-elf-gcc"
     }
   ],
   "version": 4
