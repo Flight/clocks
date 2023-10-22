@@ -26,11 +26,13 @@ extern const char api_weatherapi_com_pem_end[] asm("_binary_api_weatherapi_com_p
 static char json_buffer[MAX_JSON_SIZE];
 static int json_buffer_index = 0;
 
+#define TEMPERATURE_ERROR_CODE -1000
 static int retry_count = 0;
+static float temperature_from_json = TEMPERATURE_ERROR_CODE;
 
 float get_temperature_from_json(char *json_string)
 {
-  float temperature = -1000;
+  float temperature = TEMPERATURE_ERROR_CODE;
 
   ESP_LOGI(TAG, "JSON string: %s", json_string);
 
@@ -67,18 +69,14 @@ float get_temperature_from_json(char *json_string)
 
 esp_err_t _http_event_handle(esp_http_client_event_t *evt)
 {
-  esp_err_t status_code = ESP_OK;
-
   switch (evt->event_id)
   {
   case HTTP_EVENT_ERROR:
     ESP_LOGE(TAG, "HTTP_EVENT_ERROR");
-    status_code = ESP_ERR_HTTP_BASE;
     break;
 
   case HTTP_EVENT_REDIRECT:
     ESP_LOGI(TAG, "HTTP_EVENT_REDIRECT");
-    status_code = ESP_ERR_HTTP_BASE;
     break;
 
   case HTTP_EVENT_ON_CONNECTED:
@@ -113,16 +111,15 @@ esp_err_t _http_event_handle(esp_http_client_event_t *evt)
   case HTTP_EVENT_ON_FINISH:
     ESP_LOGI(TAG, "HTTP_EVENT_ON_FINISH");
     json_buffer[json_buffer_index] = '\0'; // Null terminate the JSON string
-    float temperature = get_temperature_from_json(json_buffer);
-    if (temperature == -1000 || strlen(json_buffer) == 0)
+    temperature_from_json = get_temperature_from_json(json_buffer);
+    if (temperature_from_json == TEMPERATURE_ERROR_CODE || strlen(json_buffer) == 0)
     {
       ESP_LOGE(TAG, "Can't get temperature");
-      status_code = ESP_ERR_INVALID_RESPONSE;
     }
     else
     {
-      ESP_LOGI(TAG, "Temperature is %f", temperature);
-      global_outside_temperature = temperature;
+      global_outside_temperature = temperature_from_json;
+      ESP_LOGI(TAG, "Temperature is %f", global_outside_temperature);
       xEventGroupSetBits(global_event_group, IS_OUTSIDE_TEMPERATURE_READING_DONE_BIT);
     }
     json_buffer_index = 0; // Reset for next request
@@ -133,7 +130,7 @@ esp_err_t _http_event_handle(esp_http_client_event_t *evt)
     break;
   }
 
-  return status_code;
+  return ESP_OK;
 }
 
 void temperature_from_api_task(void *pvParameter)
@@ -150,7 +147,8 @@ void temperature_from_api_task(void *pvParameter)
         .url = full_url,
         .event_handler = _http_event_handle,
         .disable_auto_redirect = true,
-        .cert_pem = api_weatherapi_com_pem_start};
+        .cert_pem = api_weatherapi_com_pem_start,
+        .buffer_size = 2048};
 
     esp_http_client_handle_t client = esp_http_client_init(&config);
 
@@ -158,14 +156,12 @@ void temperature_from_api_task(void *pvParameter)
     {
       esp_err_t err = esp_http_client_perform(client);
 
-      ESP_LOGI(TAG, "err: %s", esp_err_to_name(err));
-
-      if (err == ESP_OK)
+      if (temperature_from_json != TEMPERATURE_ERROR_CODE)
       {
         break;
       }
 
-      ESP_LOGW(TAG, "HTTP GET request failed (attempt %d): %s", retry_count + 1, esp_err_to_name(err));
+      ESP_LOGW(TAG, "HTTP GET request failed (attempt %d)", retry_count + 1);
       vTaskDelay(1000 * 10 / portTICK_PERIOD_MS);
       retry_count++;
     }

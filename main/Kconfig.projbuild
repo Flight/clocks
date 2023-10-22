@@ -10,16 +10,18 @@ menu "CLOCKS GPIO SETTINGS"
   config LED_GPIO
     int "Onboard LED GPIO number"
     range ENV_GPIO_RANGE_MIN ENV_GPIO_RANGE_MAX
-    default 5 if IDF_TARGET_ESP32
-    default 18 if IDF_TARGET_ESP32S2
+    default 2 if IDF_TARGET_ESP32
+    default 8 if IDF_TARGET_ESP32C3
     default 48 if IDF_TARGET_ESP32S3
-    default 8
+    default 5
     help
       GPIO number (IOxx) for the onboard LED.
 
   config SDA_PIN
     int "SDA GPIO number"
     range ENV_GPIO_RANGE_MIN ENV_GPIO_RANGE_MAX
+    default 21 if IDF_TARGET_ESP32
+    default 7 if IDF_TARGET_ESP32C3
     default 21
     help
       GPIO number (IOxx) for the IC2 SDA pin.
@@ -28,6 +30,8 @@ menu "CLOCKS GPIO SETTINGS"
   config SCL_PIN
     int "SCL GPIO number"
     range ENV_GPIO_RANGE_MIN ENV_GPIO_RANGE_MAX
+    default 22 if IDF_TARGET_ESP32
+    default 6 if IDF_TARGET_ESP32C3
     default 22
     help
       GPIO number (IOxx) for the IC2 SCL pin.
@@ -36,20 +40,26 @@ menu "CLOCKS GPIO SETTINGS"
   config TM1637_CLK_PIN
     int "TM1637 LCD screen CLK GPIO number"
     range 0 ENV_GPIO_RANGE_MAX
-    default 2
+    default 33 if IDF_TARGET_ESP32
+    default 0 if IDF_TARGET_ESP32C3
+    default 33
     help
         GPIO number (IOxx) for CLK pin of TM1637 display.
 
   config TM1637_DIO_PIN
     int "TM1637 LCD screen DIO pin GPIO number"
     range 0 ENV_GPIO_RANGE_MAX
-    default 3
+    default 32 if IDF_TARGET_ESP32
+    default 1 if IDF_TARGET_ESP32C3
+    default 32
     help
         GPIO number (IOxx) for DIO pin of TM1637 display.
 
   config LIGHT_SENSOR_PIN
     int "HW-072 light sensor Data Output (DO) pin GPIO number"
     range 0 ENV_GPIO_RANGE_MAX
+    default 34 if IDF_TARGET_ESP32
+    default 3 if IDF_TARGET_ESP32C3
     default 34
     help
         GPIO number (IOxx) for Data Output (DO) pin of HW-072 light sensor.
