@@ -118,8 +118,8 @@ void external_timer_task(void *pvParameters)
   ESP_LOGI(TAG, "Init");
   ds3231_init_desc(&timer, 0, DS3231_SDA_PIN, DS3231_SCL_PIN);
 
-  xTaskCreate(clocks_temperature_task, "clocks_temperature_task", configMINIMAL_STACK_SIZE * 8, NULL, 1, NULL);
-  xTaskCreate(clocks_time_task, "clocks_time_task", configMINIMAL_STACK_SIZE * 8, NULL, 1, NULL);
+  xTaskCreate(clocks_temperature_task, "clocks_temperature_task", configMINIMAL_STACK_SIZE * 2, NULL, 1, NULL);
+  xTaskCreate(clocks_time_task, "clocks_time_task", configMINIMAL_STACK_SIZE * 2, NULL, 1, NULL);
 
   vTaskDelete(NULL);
 }
