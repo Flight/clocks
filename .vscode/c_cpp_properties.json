@@ -5,11 +5,11 @@
       "cStandard": "c11",
       "cppStandard": "c++17",
       "includePath": [
+        "${workspaceFolder}/**",
+        "${workspaceFolder}/build/config",
         "${config:idf.espIdfPath}/components/**",
         "~/esp/esp-idf-lib/components/**",
-        "${config:idf.espAdfPath}/components/**",
-        "${workspaceFolder}/**",
-        "${workspaceFolder}/build/config"
+        "${config:idf.espAdfPath}/components/**"
       ],
       "browse": {
         "limitSymbolsToIncludedHeaders": false
