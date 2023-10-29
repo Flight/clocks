@@ -1,0 +1,1 @@
+void external_timer_task(void *pvParameter);

@@ -2,7 +2,7 @@
   "C_Cpp.intelliSenseEngine": "default",
   "idf.adapterTargetName": "esp32c3",
   "idf.openOcdConfigs": ["board/esp32c3-builtin.cfg"],
-  "idf.port": "/dev/cu.usbmodem11301",
+  "idf.port": "/dev/cu.usbmodem11201",
   "idf.flashType": "UART",
   "C_Cpp.default.compilerPath": "~/.espressif/tools/riscv32-esp-elf/esp-12.2.0_20230208/riscv32-esp-elf/bin/riscv32-esp-elf-gcc",
   "files.associations": {

@@ -11,17 +11,19 @@
 
 #include "global_event_group.h"
 
-#include "wifi/wifi.h"
 #include "led/led.h"
-#include "display/display.h"
-#include "temperature/temperature.h"
-#include "time/ntp.h"
 #include "light/light.h"
+#include "display/display.h"
+#include "time/external_timer.h"
+#include "wifi/wifi.h"
+#include "time/ntp.h"
+#include "temperature_from_sensor/temperature_from_sensor.h"
 #include "temperature_from_api/temperature_from_api.h"
 
 static const char *TIMEZONE = CONFIG_TIMEZONE;
 
 EventGroupHandle_t global_event_group;
+float global_inside_temperature;
 
 void app_main(void)
 {
@@ -35,9 +37,10 @@ void app_main(void)
   tzset();
 
   xTaskCreatePinnedToCore(&led_task, "led_task", configMINIMAL_STACK_SIZE * 2, NULL, 1, NULL, 1);
+  xTaskCreatePinnedToCore(&light_sensor_task, "light_sensor_task", configMINIMAL_STACK_SIZE * 8, NULL, 1, NULL, 1);
+  xTaskCreatePinnedToCore(&external_timer_task, "external_timer_task", configMINIMAL_STACK_SIZE * 8, NULL, 1, NULL, 1);
   xTaskCreatePinnedToCore(&ntp_task, "ntp_task", configMINIMAL_STACK_SIZE * 2, NULL, 1, NULL, 1);
   xTaskCreatePinnedToCore(&lcd_tm1637_task, "lcd_tm1637_task", configMINIMAL_STACK_SIZE * 8, NULL, 1, NULL, 1);
-  xTaskCreatePinnedToCore(&temperature_task, "temperature_task", configMINIMAL_STACK_SIZE * 8, NULL, 1, NULL, 1);
-  xTaskCreatePinnedToCore(&light_sensor_task, "light_sensor_task", configMINIMAL_STACK_SIZE * 8, NULL, 1, NULL, 1);
+  xTaskCreatePinnedToCore(&temperature_from_sensor_task, "temperature_from_sensor_task", configMINIMAL_STACK_SIZE * 8, NULL, 1, NULL, 1);
   xTaskCreatePinnedToCore(&temperature_from_api_task, "temperature_from_api_task", configMINIMAL_STACK_SIZE * 8, NULL, 1, NULL, 1);
 }

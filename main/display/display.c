@@ -126,7 +126,7 @@ void lcd_tm1637_task(void *pvParameter)
   check_segments();
 
   ESP_LOGI(TAG, "Waiting for time");
-  xEventGroupWaitBits(global_event_group, IS_NTP_SET_BIT, pdFALSE, pdTRUE, portMAX_DELAY);
+  xEventGroupWaitBits(global_event_group, IS_TIME_SET_BIT, pdFALSE, pdTRUE, portMAX_DELAY);
   ESP_LOGI(TAG, "Got the time");
 
   while (true)
@@ -146,13 +146,16 @@ void lcd_tm1637_task(void *pvParameter)
     uint8_t hours = timeinfo.tm_hour;
     uint8_t minutes = timeinfo.tm_min;
 
-    if (uxBits & IS_LIGHT_SENSOR_READING_DONE_BIT && global_is_light_on)
+    if (uxBits & IS_LIGHT_SENSOR_READING_DONE_BIT)
     {
-      change_brightness_smoothly(MAX_BRIGHTNESS);
-    }
-    else
-    {
-      change_brightness_smoothly(MIN_BRIGHTNESS);
+      if (global_is_light_on)
+      {
+        change_brightness_smoothly(MAX_BRIGHTNESS);
+      }
+      else
+      {
+        change_brightness_smoothly(MIN_BRIGHTNESS);
+      }
     }
 
     if (seconds_time_shown > SECONDS_UNTIL_TEMPERATURE_SHOWN)

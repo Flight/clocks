@@ -15,6 +15,11 @@
 #define SNTP_SERVER "pool.ntp.org"
 
 static const char *TAG = "NTP";
+static const uint8_t REFRESH_INTERVAL_HOURS = 24;
+static const uint8_t UPDATE_TIMEOUT_SECS = 10;
+static const uint8_t RETRY_SECS = 10;
+static const uint8_t MAX_RETRIES = 3;
+static uint8_t retry_count = 0;
 
 void ntp_task(void *pvParameter)
 {
@@ -25,24 +30,36 @@ void ntp_task(void *pvParameter)
   xEventGroupWaitBits(global_event_group, IS_WIFI_CONNECTED_BIT, pdFALSE, pdTRUE, portMAX_DELAY);
 
   esp_netif_sntp_init(&config);
-
   ESP_LOGI(TAG, "Init done");
 
-  while (1)
+  while (true)
   {
-    // Check if synchronized
-    if (esp_netif_sntp_sync_wait(10000 / portTICK_PERIOD_MS) == ESP_OK)
+    while (retry_count < MAX_RETRIES)
     {
-      ESP_LOGI(TAG, "Got the time");
-      xEventGroupSetBits(global_event_group, IS_NTP_SET_BIT);
+      esp_err_t err = esp_netif_sntp_sync_wait(1000 * UPDATE_TIMEOUT_SECS / portTICK_PERIOD_MS);
 
-      // Check NTP time once in 24 hours
-      vTaskDelay(86400000 / portTICK_PERIOD_MS);
+      if (err == ESP_OK)
+      {
+        ESP_LOGI(TAG, "Got the time, next time sync in %d hours.", REFRESH_INTERVAL_HOURS);
+        xEventGroupSetBits(global_event_group, IS_TIME_FROM_NPT_UP_TO_DATE_BIT);
+        break;
+      }
+
+      ESP_LOGW(TAG, "Failed to update system time within %d seconds. (attempt %d of %d)", UPDATE_TIMEOUT_SECS, retry_count + 1, MAX_RETRIES);
+      if (retry_count + 1 < MAX_RETRIES)
+      {
+        ESP_LOGI(TAG, "Trying to repeat in %d seconds.", RETRY_SECS);
+      }
+
+      vTaskDelay(1000 * RETRY_SECS / portTICK_PERIOD_MS);
+      retry_count++;
+
+      if (retry_count == MAX_RETRIES)
+      {
+        ESP_LOGE(TAG, "Can't fetch the time. Next retry in %d hours.", REFRESH_INTERVAL_HOURS);
+      }
     }
-    else
-    {
-      printf("Failed to update system time within 10s timeout. Trying to repeat in 10 seconds.");
-      vTaskDelay(10000 / portTICK_PERIOD_MS);
-    }
+
+    vTaskDelay(1000 * 60 * 60 * REFRESH_INTERVAL_HOURS / portTICK_PERIOD_MS);
   }
 }

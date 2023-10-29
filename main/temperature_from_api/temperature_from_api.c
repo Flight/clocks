@@ -24,10 +24,10 @@ extern const char api_weatherapi_com_pem_end[] asm("_binary_api_weatherapi_com_p
 
 #define MAX_JSON_SIZE 2048
 static char json_buffer[MAX_JSON_SIZE];
-static int json_buffer_index = 0;
+static u_int32_t json_buffer_index = 0;
 
 #define TEMPERATURE_ERROR_CODE -1000
-static int retry_count = 0;
+static uint8_t retry_count = 0;
 static float temperature_from_json = TEMPERATURE_ERROR_CODE;
 
 float get_temperature_from_json(char *json_string)
@@ -76,19 +76,19 @@ esp_err_t _http_event_handle(esp_http_client_event_t *evt)
     break;
 
   case HTTP_EVENT_REDIRECT:
-    ESP_LOGI(TAG, "HTTP_EVENT_REDIRECT");
+    // ESP_LOGI(TAG, "HTTP_EVENT_REDIRECT");
     break;
 
   case HTTP_EVENT_ON_CONNECTED:
-    ESP_LOGI(TAG, "HTTP_EVENT_ON_CONNECTED");
+    // ESP_LOGI(TAG, "HTTP_EVENT_ON_CONNECTED");
     break;
 
   case HTTP_EVENT_HEADER_SENT:
-    ESP_LOGI(TAG, "HTTP_EVENT_HEADER_SENT");
+    // ESP_LOGI(TAG, "HTTP_EVENT_HEADER_SENT");
     break;
 
   case HTTP_EVENT_ON_HEADER:
-    ESP_LOGI(TAG, "HTTP_EVENT_ON_HEADER");
+    // ESP_LOGI(TAG, "HTTP_EVENT_ON_HEADER");
     printf("%.*s", evt->data_len, (char *)evt->data);
     break;
 
@@ -109,7 +109,7 @@ esp_err_t _http_event_handle(esp_http_client_event_t *evt)
     break;
 
   case HTTP_EVENT_ON_FINISH:
-    ESP_LOGI(TAG, "HTTP_EVENT_ON_FINISH");
+    // ESP_LOGI(TAG, "HTTP_EVENT_ON_FINISH");
     json_buffer[json_buffer_index] = '\0'; // Null terminate the JSON string
     temperature_from_json = get_temperature_from_json(json_buffer);
     if (temperature_from_json == TEMPERATURE_ERROR_CODE || strlen(json_buffer) == 0)
@@ -141,7 +141,7 @@ void temperature_from_api_task(void *pvParameter)
   ESP_LOGI(TAG, "Waiting for Wi-Fi");
   xEventGroupWaitBits(global_event_group, IS_WIFI_CONNECTED_BIT, pdFALSE, pdTRUE, portMAX_DELAY);
 
-  while (1)
+  while (true)
   {
     esp_http_client_config_t config = {
         .url = full_url,
@@ -155,7 +155,7 @@ void temperature_from_api_task(void *pvParameter)
 
     while (retry_count < MAX_RETRIES)
     {
-      esp_err_t err = esp_http_client_perform(client);
+      esp_http_client_perform(client);
 
       if (temperature_from_json != TEMPERATURE_ERROR_CODE)
       {

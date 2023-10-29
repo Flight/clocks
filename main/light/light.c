@@ -30,7 +30,7 @@ void light_sensor_task(void *pvParameter)
   gpio_isr_handler_add(LIGHT_SENSOR_PIN, main_isr_handler, NULL);
   ESP_LOGI(TAG, "Init done");
 
-  while (1)
+  while (true)
   {
     vTaskDelay(portMAX_DELAY);
   }

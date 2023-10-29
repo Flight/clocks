@@ -8,6 +8,7 @@
 
 static const gpio_num_t LED_GPIO = CONFIG_LED_GPIO;
 static bool is_enabled = true;
+static const uint8_t INTERVAL_SEC = 2;
 
 static void toggle_led()
 {
@@ -19,9 +20,10 @@ void led_task(void *pvParameter)
 {
   gpio_reset_pin(LED_GPIO);
   gpio_set_direction(LED_GPIO, GPIO_MODE_OUTPUT);
-  while (1)
+
+  while (true)
   {
     toggle_led();
-    vTaskDelay(500 / portTICK_PERIOD_MS);
+    vTaskDelay(1000 * INTERVAL_SEC / portTICK_PERIOD_MS);
   }
 }

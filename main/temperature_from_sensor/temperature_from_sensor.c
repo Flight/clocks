@@ -8,7 +8,7 @@
 #include "bme680.h"
 #include "global_event_group.h"
 
-#include "temperature.h"
+#include "temperature_from_sensor.h"
 
 #define PORT 0
 #define ADDR BME680_I2C_ADDR_1 // Try the BME680_I2C_ADDR_0 if this doesn't work
@@ -20,9 +20,7 @@ static const gpio_num_t BME680_SCL_PIN = CONFIG_SCL_PIN;
 
 static const uint8_t REFRESH_INTERVAL_MINS = 1;
 
-float global_inside_temperature;
-
-void temperature_task(void *pvParameter)
+void temperature_from_sensor_task(void *pvParameter)
 {
   bme680_t sensor;
   memset(&sensor, 0, sizeof(bme680_t));
@@ -35,7 +33,7 @@ void temperature_task(void *pvParameter)
 
   bme680_values_float_t values;
 
-  while (1)
+  while (true)
   {
     if (bme680_force_measurement(&sensor) == ESP_OK)
     {
@@ -44,11 +42,20 @@ void temperature_task(void *pvParameter)
 
       if (bme680_get_results_float(&sensor, &values) == ESP_OK)
       {
-        ESP_LOGI(TAG, "BME680 Sensor: %.2f °C, %.2f %%",
+        ESP_LOGI(TAG, "%.2f °C, %.2f %%",
                  values.temperature, values.humidity);
         global_inside_temperature = values.temperature;
+        xEventGroupSetBits(global_event_group, IS_PRECISE_INSIDE_TEMPERATURE_READING_DONE_BIT);
         xEventGroupSetBits(global_event_group, IS_INSIDE_TEMPERATURE_READING_DONE_BIT);
       }
+      else
+      {
+        xEventGroupClearBits(global_event_group, IS_PRECISE_INSIDE_TEMPERATURE_READING_DONE_BIT);
+      }
+    }
+    else
+    {
+      xEventGroupClearBits(global_event_group, IS_PRECISE_INSIDE_TEMPERATURE_READING_DONE_BIT);
     }
 
     vTaskDelay(1000 * 60 * REFRESH_INTERVAL_MINS / portTICK_PERIOD_MS);
