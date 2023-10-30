@@ -45,8 +45,8 @@ void app_main(void)
   xTaskCreatePinnedToCore(&ntp_task, "ntp_task", configMINIMAL_STACK_SIZE * 2, NULL, 1, NULL, 1);
   xTaskCreatePinnedToCore(&lcd_tm1637_task, "lcd_tm1637_task", configMINIMAL_STACK_SIZE * 2, NULL, 1, NULL, 1);
   xTaskCreatePinnedToCore(&temperature_from_sensor_task, "temperature_from_sensor_task", configMINIMAL_STACK_SIZE * 2, NULL, 1, NULL, 1);
-  xTaskCreatePinnedToCore(&temperature_from_api_task, "temperature_from_api_task", configMINIMAL_STACK_SIZE * 4, NULL, 1, NULL, 1);
-  xTaskCreatePinnedToCore(&ota_update_task, "ota_update_task", configMINIMAL_STACK_SIZE * 4, NULL, 1, NULL, 1);
+  xTaskCreatePinnedToCore(&temperature_from_api_task, "temperature_from_api_task", configMINIMAL_STACK_SIZE * 8, NULL, 1, NULL, 1);
+  xTaskCreatePinnedToCore(&ota_update_task, "ota_update_task", configMINIMAL_STACK_SIZE * 8, NULL, 1, NULL, 1);
 
   vTaskDelay(1000 * DELAY_UNTIL_SYSTEM_STATE_FIRST_PRINT_SECS / portTICK_PERIOD_MS);
   xTaskCreatePinnedToCore(&system_state_task, "system_state_task", configMINIMAL_STACK_SIZE * 2, NULL, 1, NULL, 1);
