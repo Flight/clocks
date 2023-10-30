@@ -20,13 +20,13 @@
 
 static const char *TAG = "OTA FW Update";
 
-extern const uint8_t server_cert_pem_start[] asm("_binary_ota_pem_start");
-extern const uint8_t server_cert_pem_end[] asm("_binary_ota_pem_end");
+extern const uint8_t server_cert_pem_start[] asm("_binary_cert_pem_start");
+extern const uint8_t server_cert_pem_end[] asm("_binary_cert_pem_end");
 
 #define HASH_LEN 32
 #define OTA_URL_SIZE 256
 
-esp_err_t _http_event_handler(esp_http_client_event_t *evt)
+static esp_err_t _http_event_handler(esp_http_client_event_t *evt)
 {
   switch (evt->event_id)
   {
@@ -93,6 +93,11 @@ void ota_update_task(void *pvParameter)
   get_sha256_of_partitions();
 
   ESP_LOGI(TAG, "Starting OTA task.");
+
+  ESP_LOGI(TAG, "Diagnostics completed successfully! Continuing execution ...");
+  esp_ota_mark_app_valid_cancel_rollback();
+  esp_ota_erase_last_boot_app_partition();
+
   esp_http_client_config_t config = {
       .url = FIRMWARE_UPGRADE_URL,
       .cert_pem = (char *)server_cert_pem_start,

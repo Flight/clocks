@@ -25,14 +25,16 @@ The project was created using [ESP-IDF plugin](https://docs.espressif.com/projec
 
 ## Initial setup
 
-1. Clone the repo.
+1. Clone the repo `git clone git@github.com:Flight/clocks.git` and go inside: `cd clocks`.
 2. Generate the certificate for weatherapi.com
 
    `echo -n | openssl s_client -connect 192.168.50.100:443 | sed -ne '/-BEGIN CERTIFICATE-/,/-END CERTIFICATE-/p' > main/temperature_from_api/api_weatherapi_com.pem`
 
-3. Generate a certificate for the OTA Updates:
+3. Generate a certificate for the OTA Updates. Please **don't forget to fill the server name** on this step:
 
-   `openssl req -x509 -newkey rsa:2048 -keyout ota.pem -out main/ota_update/ota.pem -days 365 -nodes`
+   **Common Name (e.g. server FQDN or YOUR name) []: 192.168.50.100** (your local IP address).
+
+   `openssl req -newkey rsa:2048 -new -nodes -x509 -days 365 -keyout ota_server/key.pem -out main/ota_update/cert.pem`
 
 4. Change the settings.
    ![Settings](settings.jpeg)
@@ -48,21 +50,23 @@ Run the project using the **ESP-IDF Build, Flash and Monitor** button (number 6 
 - **Flash size** according to the settings on the screenshot (> 4 MB is needed for OTA).
 - **Partition table** in settings
 - **Firmware upgrade endpoint URL** in the Clocks OTA Update section.
-- Generated the **certificate** in `main/ota_update/ota.pem`.
+- Generated the **certificate** `main/ota_update/cert.pem`.
 
 ### Run OTA Update
 
-1. Run OTA web-server from any folder:
+1. Run OTA web-server from `ota_server` folder. I'm using this [http-server](https://github.com/http-party/http-server) as **OpenSSL one didn't work properly** and was hanging during download until you don't stop it manually.
 
-   `openssl s_server -WWW -key ota.pem -cert ota.pem -port 8070`
+   `cd ota_server`
 
-   Please don't forget to fill the server name on this step (your local IP address):
+   `npx http-server -S -C ../main/ota_update/cert.pem -p 8070`
 
-   `Common Name (e.g. server FQDN or YOUR name) []: 192.168.50.100`
+2. Drop the file `clocks.bin` to `ota_server` folder or setup the build to generate the output file in that folder.
 
-2. Drop the file `clocks.bin` to that folder or setup the build to generate the output file in that folder.
+   You can find the `main.bin` in the `build` folder after you built it. Just copy and rename it to `clocks.bin`.
 
 3. Restart the ESP32. It will automatically start update process in 10 seconds after boot.
+
+4. **Shut down the web server** after update as it will **loop the download process** if the clocks will be manually rebooted again. The version comparison is not implemented yet.
 
 ## Folder contents
 

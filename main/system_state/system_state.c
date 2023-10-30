@@ -4,6 +4,8 @@
 #include <stdlib.h>
 #include <esp_heap_caps.h>
 
+#define UPDATE_INTERVAL_MINS 2
+
 static const char *taskStates[] = {
     "Running",   // eRunning
     "Ready",     // eReady
@@ -90,6 +92,6 @@ void system_state_task(void *pvParameter)
   while (true)
   {
     printSystemState();
-    vTaskDelay(60000 / portTICK_PERIOD_MS);
+    vTaskDelay(1000 * 60 * UPDATE_INTERVAL_MINS / portTICK_PERIOD_MS);
   }
 }
