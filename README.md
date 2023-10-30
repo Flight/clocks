@@ -9,7 +9,8 @@ It connects to the Wi-Fi and syncs the time with the NTP server, showing the tim
 
 ## Features
 
-- Based on **ESP32** microcontroller (tested with ESP32, ESP32C3, ESP32S3).
+- Based on **ESP32** microcontroller (tested with ESP32, ESP32C3 and ESP32S3). I've used the **[WeActStudio ESP32-C3FH4 Core Board](https://github.com/WeActStudio/WeActStudio.ESP32C3CoreBoard)**.
+
 - **TM1637** 7-segment display.
 - _Optional:_ **HW-072** Light Sensor. Switching between full and minimal brightness based on the photoresistor.
 - _Optional:_ **BME680** environment sensor. Measuring temperature (and optionally humidity).
@@ -27,32 +28,45 @@ The project was created using [ESP-IDF plugin](https://docs.espressif.com/projec
 1. Clone the repo.
 2. Generate the certificate for weatherapi.com
 
-   `echo -n | openssl s_client -connect 192.168.50.100:443 | sed -ne '/-BEGIN CERTIFICATE-/,/-END CERTIFICATE-/p' > main.temperature_from_api/api_weatherapi_com.pem`
+   `echo -n | openssl s_client -connect 192.168.50.100:443 | sed -ne '/-BEGIN CERTIFICATE-/,/-END CERTIFICATE-/p' > main/temperature_from_api/api_weatherapi_com.pem`
 
-3. Change the settings.
+3. Generate a certificate for the OTA Updates:
+
+   `openssl req -x509 -newkey rsa:2048 -keyout ota.pem -out main/ota_update/ota.pem -days 365 -nodes`
+
+4. Change the settings.
    ![Settings](settings.jpeg)
+
+## Run the project
+
+Run the project using the **ESP-IDF Build, Flash and Monitor** button (number 6 on the screenshot).
 
 ## OTA Wi-Fi Updates
 
-Don't forget to fill the **Flash size** according to the settings screenshot (> 4 MB is needed for OTA). Same for the **Partition table** and **Firmware upgrade endpoint URL** in the Clocks OTA Update section.
+### Initial Checklist
 
-1. Generate a certificate:
-   `openssl req -x509 -newkey rsa:2048 -keyout ota.pem -out main/ota_update/ota.pem -days 365 -nodes`
+- **Flash size** according to the settings on the screenshot (> 4 MB is needed for OTA).
+- **Partition table** in settings
+- **Firmware upgrade endpoint URL** in the Clocks OTA Update section.
+- Generated the **certificate** in `main/ota_update/ota.pem`.
 
-2. Run OTA web-server from any folder:
+### Run OTA Update
+
+1. Run OTA web-server from any folder:
 
    `openssl s_server -WWW -key ota.pem -cert ota.pem -port 8070`
 
    Please don't forget to fill the server name on this step (your local IP address):
+
    `Common Name (e.g. server FQDN or YOUR name) []: 192.168.50.100`
 
-3. Drop the file `clocks.bin` to that folder or setup the build to generate the output file in that folder.
+2. Drop the file `clocks.bin` to that folder or setup the build to generate the output file in that folder.
 
-4. Restart the ESP32. It will automatically start update process in 10 seconds after boot.
+3. Restart the ESP32. It will automatically start update process in 10 seconds after boot.
 
 ## Folder contents
 
-The project **clocks** contains one source file in C language [main.c](main/main.c). The file is located in folder [main](main).
+The project **clocks** contains the entry point file in C language [main.c](main/main.c). The file is located in folder [main](main).
 
 ESP-IDF projects are built using CMake. The project build configuration is contained in `CMakeLists.txt`
 files that provide set of directives and instructions describing the project's source files and targets
