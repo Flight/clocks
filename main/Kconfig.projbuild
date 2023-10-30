@@ -152,3 +152,11 @@ menu "CLOCKS WEATHER API SETTINGS"
       City to get the current weather.
     default "Amsterdam"
 endmenu
+
+menu "CLOCKS OTA UPDATE SETTINGS"
+  config FIRMWARE_UPGRADE_URL
+    string "Firmware upgrade endpoint URL"
+    default "https://192.168.50.100:8070/clocks.bin"
+    help
+      URL of server which hosts the firmware image.
+endmenu

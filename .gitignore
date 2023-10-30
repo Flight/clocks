@@ -10,3 +10,4 @@ sdkconfig
 sdkconfig.old
 
 *.pem
+ota_server/*.bin
