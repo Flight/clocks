@@ -5,7 +5,10 @@
 
 It connects to the Wi-Fi and syncs the time with the NTP server, showing the time and temperature on the screen. Optionally saving it to the external timer and showing the temperature from the sensor + from the API. Supports OTA Wi-Fi updates.
 
-![Sample setup](photo.jpeg)
+![Breadboard](breadboard.jpeg)
+
+![Schematics](schematics.png)
+(green wires - data, yellow wires - clock, blue wire - low / high light sensor output)
 
 ## Features
 
