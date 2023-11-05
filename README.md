@@ -5,6 +5,8 @@
 
 It connects to the Wi-Fi and syncs the time with the NTP server, showing the time and temperature on the screen. Optionally saving it to the external timer and showing the temperature from the sensor + from the API. Supports OTA Wi-Fi updates.
 
+The project started from the dead section of the built-in clocks in my bath mirror and moved to my first experience with microcontrollers, C language and creating the home "lab".
+
 ![Breadboard](breadboard.jpeg)
 
 ![Schematics](schematics.png)
@@ -70,6 +72,21 @@ Run the project using the **ESP-IDF Build, Flash and Monitor** button (number 6 
 3. Restart the ESP32. It will automatically start update process in 10 seconds after boot.
 
 4. **Shut down the web server** after update as it will **loop the download process** if the clocks will be manually rebooted again. The version comparison is not implemented yet.
+
+## More photos
+
+![Schematics](prebuild.jpeg)
+![Installation](installation.jpeg)
+![Done](done.jpeg)
+
+## Next steps
+
+- Prevent showing the outdated outside temperature if the API is down for a long period of time. Now I can just restart the module if I see that problem and it will stop showing it, but it's not the best solution.
+- Sometimes the weather API fails because of some mysterios chunking issues, so I need to retry. It would be nice to solve that.
+- As my bath have built-in bluetooth speakers, it would be nice to add some analog or internet radio streaming. It's not possible on the new models of ESP32 after the ESP32S. So it will limit the selection of the chips.
+- Add the human presense sensor like LD2410 and turn off the screen if there is nobody in the bath to prevent display degradation. Maybe can add some other cool features with it.
+- Web server with ESP_LOG outputs. The device already supports OTA Wi-Fi updates, so it will make it even easier.
+- Check OTA updates periodically instead of only on boot.
 
 ## Folder contents
 
