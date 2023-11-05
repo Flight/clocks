@@ -81,6 +81,7 @@ Run the project using the **ESP-IDF Build, Flash and Monitor** button (number 6 
 
 ## Next steps
 
+- Replace the light sensor with the one which supports dead-zone to prevent blinking when the light is near the threshold.
 - Prevent showing the outdated outside temperature if the API is down for a long period of time. Now I can just restart the module if I see that problem and it will stop showing it, but it's not the best solution.
 - Sometimes the weather API fails because of some mysterios chunking issues, so I need to retry. It would be nice to solve that.
 - As my bath have built-in bluetooth speakers, it would be nice to add some analog or internet radio streaming. It's not possible on the new models of ESP32 after the ESP32S. So it will limit the selection of the chips.
