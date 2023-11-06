@@ -91,36 +91,42 @@ static esp_err_t _http_event_handler(esp_http_client_event_t *evt)
     break;
 
   case HTTP_EVENT_ON_DATA:
-    ESP_LOGI(TAG, "HTTP_EVENT_ON_DATA, len=%d", evt->data_len);
+    ESP_LOGD(TAG, "HTTP_EVENT_ON_DATA, len=%d", evt->data_len);
     // Clean the buffer in case of a new request
     if (output_len == 0 && evt->user_data)
     {
-      // we are just starting to copy the output data into the use
       memset(evt->user_data, 0, MAX_HTTP_OUTPUT_BUFFER);
     }
-    /*
-     *  Check for chunked encoding is added as the URL for chunked encoding used in this example returns binary data.
-     *  However, event handler can also be used in case chunked encoding is used.
-     */
-    if (!esp_http_client_is_chunked_response(evt->client))
+
+    int copy_len = 0;
+    if (evt->user_data)
     {
-      // If user_data buffer is configured, copy the response into the buffer
-      int copy_len = 0;
-      if (evt->user_data)
+      copy_len = MIN(evt->data_len, (MAX_HTTP_OUTPUT_BUFFER - output_len));
+      if (copy_len)
       {
-        // The last byte in evt->user_data is kept for the NULL character in case of out-of-bound access.
-        copy_len = MIN(evt->data_len, (MAX_HTTP_OUTPUT_BUFFER - output_len));
-        if (copy_len)
+        memcpy(evt->user_data + output_len, evt->data, copy_len);
+      }
+    }
+    else
+    {
+      if (esp_http_client_is_chunked_response(evt->client))
+      {
+        ESP_LOGI(TAG, "The data is chunked");
+        // If chunked, reallocate buffer to accumulate more data
+        output_buffer = realloc(output_buffer, output_len + evt->data_len + 1);
+        if (!output_buffer)
         {
-          memcpy(evt->user_data + output_len, evt->data, copy_len);
+          ESP_LOGE(TAG, "Failed to allocate memory for output buffer");
+          return ESP_FAIL;
         }
+        copy_len = evt->data_len;
       }
       else
       {
+        ESP_LOGI(TAG, "The data is not chunked");
         int content_len = esp_http_client_get_content_length(evt->client);
         if (output_buffer == NULL)
         {
-          // We initialize output_buffer with 0 because it is used by strlen() and similar functions therefore should be null terminated.
           output_buffer = (char *)calloc(content_len + 1, sizeof(char));
           output_len = 0;
           if (output_buffer == NULL)
@@ -130,13 +136,13 @@ static esp_err_t _http_event_handler(esp_http_client_event_t *evt)
           }
         }
         copy_len = MIN(evt->data_len, (content_len - output_len));
-        if (copy_len)
-        {
-          memcpy(output_buffer + output_len, evt->data, copy_len);
-        }
       }
-      output_len += copy_len;
+      if (copy_len)
+      {
+        memcpy(output_buffer + output_len, evt->data, copy_len);
+      }
     }
+    output_len += copy_len;
     break;
 
   case HTTP_EVENT_ON_FINISH:
@@ -184,9 +190,6 @@ static esp_err_t _http_event_handler(esp_http_client_event_t *evt)
 
   case HTTP_EVENT_REDIRECT:
     ESP_LOGI(TAG, "HTTP_EVENT_REDIRECT");
-    esp_http_client_set_header(evt->client, "From", "user@example.com");
-    esp_http_client_set_header(evt->client, "Accept", "text/html");
-    esp_http_client_set_redirection(evt->client);
     break;
   }
 
@@ -203,10 +206,11 @@ void temperature_from_api_task(void *pvParameter)
 
   while (true)
   {
+    xEventGroupClearBits(global_event_group, IS_OUTSIDE_TEMPERATURE_READING_DONE_BIT);
+
     esp_http_client_config_t config = {
         .url = full_url,
         .event_handler = _http_event_handler,
-        .disable_auto_redirect = true,
         .cert_pem = api_weatherapi_com_pem_start,
         .timeout_ms = 20000,
         .buffer_size = 4096};
