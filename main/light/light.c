@@ -8,10 +8,11 @@
 
 #include "light.h"
 
+bool global_is_light_on = false;
+
 static const char *TAG = "HW-072 Light Sensor";
 
 static const gpio_num_t LIGHT_SENSOR_PIN = CONFIG_LIGHT_SENSOR_PIN;
-bool global_is_light_on = false;
 
 static void read_and_save()
 {

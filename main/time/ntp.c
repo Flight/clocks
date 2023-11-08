@@ -12,8 +12,6 @@
 
 #include "ntp.h"
 
-#define SNTP_SERVER "pool.ntp.org"
-
 static const char *TAG = "NTP";
 static const uint8_t REFRESH_INTERVAL_HOURS = 24;
 static const uint8_t UPDATE_TIMEOUT_SECS = 10;

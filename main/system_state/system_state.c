@@ -4,9 +4,9 @@
 #include <stdlib.h>
 #include <esp_heap_caps.h>
 
-#define UPDATE_INTERVAL_MINS 2
+static const u_int8_t UPDATE_INTERVAL_MINS = 2;
 
-static const char *taskStates[] = {
+static const char *TASK_STATES[] = {
     "Running",   // eRunning
     "Ready",     // eReady
     "Blocked",   // eBlocked
@@ -63,7 +63,7 @@ static void printSystemState(void)
     {
       ESP_LOGI(TAG, "%-20s %-9s %4u %12lu %5u %10lu %6lu%%",
                pxTaskStatusArray[x].pcTaskName,
-               taskStates[pxTaskStatusArray[x].eCurrentState],
+               TASK_STATES[pxTaskStatusArray[x].eCurrentState],
                pxTaskStatusArray[x].uxCurrentPriority,
                pxTaskStatusArray[x].usStackHighWaterMark,
                pxTaskStatusArray[x].xTaskNumber,

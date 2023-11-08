@@ -16,15 +16,14 @@
 #include "ota_update.h"
 
 #define FIRMWARE_UPGRADE_URL CONFIG_FIRMWARE_UPGRADE_URL
-#define TIME_BEFORE_UPDATE_CHECK_SECS 10
+#define HASH_LEN 32
 
 static const char *TAG = "OTA FW Update";
 
 extern const uint8_t server_cert_pem_start[] asm("_binary_cert_pem_start");
 extern const uint8_t server_cert_pem_end[] asm("_binary_cert_pem_end");
 
-#define HASH_LEN 32
-#define OTA_URL_SIZE 256
+static const uint8_t TIME_BEFORE_UPDATE_CHECK_SECS = 10;
 
 static esp_err_t _http_event_handler(esp_http_client_event_t *evt)
 {
@@ -94,7 +93,7 @@ void ota_update_task(void *pvParameter)
 
   ESP_LOGI(TAG, "Starting OTA task.");
 
-  ESP_LOGI(TAG, "Diagnostics completed successfully! Continuing execution ...");
+  ESP_LOGI(TAG, "Diagnostics completed successfully! Marking partition as valid and cancelling rollback.");
   esp_ota_mark_app_valid_cancel_rollback();
   esp_ota_erase_last_boot_app_partition();
 

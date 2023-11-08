@@ -9,6 +9,8 @@
 
 #include "temperature_from_api.h"
 
+float global_outside_temperature;
+
 static const char *TAG = "Weather API";
 
 static const char *WEATHER_API_URL = "https://api.weatherapi.com/v1/";
@@ -19,14 +21,12 @@ static const uint8_t REFRESH_INTERVAL_MINS = 5;
 static const uint8_t RETRY_INTERVAL_SECS = 10;
 static const uint8_t MAX_RETRIES = 10;
 
-float global_outside_temperature;
-
 extern const char api_weatherapi_com_pem_start[] asm("_binary_api_weatherapi_com_pem_start");
 extern const char api_weatherapi_com_pem_end[] asm("_binary_api_weatherapi_com_pem_end");
 
 #define MAX_HTTP_OUTPUT_BUFFER 2048
-
 #define TEMPERATURE_ERROR_CODE -1000
+
 static uint8_t retry_count = 0;
 static float temperature_from_json = TEMPERATURE_ERROR_CODE;
 

@@ -15,8 +15,8 @@
 
 static const char *TAG = "BME680 Sensor";
 
-static const gpio_num_t BME680_SDA_PIN = CONFIG_SDA_PIN;
-static const gpio_num_t BME680_SCL_PIN = CONFIG_SCL_PIN;
+static const gpio_num_t SDA_PIN = CONFIG_SDA_PIN;
+static const gpio_num_t SCL_PIN = CONFIG_SCL_PIN;
 
 static const uint8_t REFRESH_INTERVAL_MINS = 1;
 
@@ -25,7 +25,7 @@ void temperature_from_sensor_task(void *pvParameter)
   bme680_t sensor;
   memset(&sensor, 0, sizeof(bme680_t));
 
-  bme680_init_desc(&sensor, ADDR, PORT, BME680_SDA_PIN, BME680_SCL_PIN);
+  bme680_init_desc(&sensor, ADDR, PORT, SDA_PIN, SCL_PIN);
   bme680_init_sensor(&sensor);
 
   uint32_t measurement_duration;

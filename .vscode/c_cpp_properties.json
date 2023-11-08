@@ -1,21 +1,21 @@
 {
-  "configurations": [
-    {
-      "name": "ESP-IDF",
-      "cStandard": "c11",
-      "cppStandard": "c++17",
-      "includePath": [
-        "${workspaceFolder}/**",
-        "${workspaceFolder}/build/config",
-        "${config:idf.espIdfPath}/components/**",
-        "~/esp/esp-idf-lib/components/**",
-        "${config:idf.espAdfPath}/components/**"
-      ],
-      "browse": {
-        "limitSymbolsToIncludedHeaders": false
-      },
-      "compilerPath": "${config:idf.toolsPath}/tools/riscv32-esp-elf/esp-12.2.0_20230208/riscv32-esp-elf/bin/riscv32-esp-elf-gcc"
-    }
-  ],
-  "version": 4
+    "configurations": [
+        {
+            "name": "ESP-IDF",
+            "cStandard": "c11",
+            "cppStandard": "c++17",
+            "includePath": [
+                "${workspaceFolder}/**",
+                "${workspaceFolder}/build/config",
+                "${config:idf.espIdfPath}/components/**",
+                "~/esp/esp-idf-lib/components/**",
+                "${config:idf.espAdfPath}/components/**"
+            ],
+            "browse": {
+                "limitSymbolsToIncludedHeaders": false
+            },
+            "compilerPath": "~/.espressif/tools/riscv32-esp-elf/esp-12.2.0_20230208/riscv32-esp-elf/bin/riscv32-esp-elf-gcc"
+        }
+    ],
+    "version": 4
 }
