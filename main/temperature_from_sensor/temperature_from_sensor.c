@@ -19,6 +19,11 @@ static const gpio_num_t SDA_PIN = CONFIG_SDA_PIN;
 static const gpio_num_t SCL_PIN = CONFIG_SCL_PIN;
 
 static const uint8_t REFRESH_INTERVAL_MINS = 1;
+// BME680 is very unprecise because of the self-heating issue
+// so we need to add an offset to the temperature
+// This offset is determined by measuring the temperature with a
+// precise thermometer and the BME680 at the same time
+static const float TEMPERATURE_OFFSET = -2.9;
 
 void temperature_from_sensor_task(void *pvParameter)
 {
@@ -27,6 +32,8 @@ void temperature_from_sensor_task(void *pvParameter)
 
   bme680_init_desc(&sensor, ADDR, PORT, SDA_PIN, SCL_PIN);
   bme680_init_sensor(&sensor);
+  bme680_use_heater_profile(&sensor, BME680_HEATER_NOT_USED);
+  bme680_set_ambient_temperature(&sensor, 22);
 
   uint32_t measurement_duration;
   bme680_get_measurement_duration(&sensor, &measurement_duration);
@@ -42,9 +49,10 @@ void temperature_from_sensor_task(void *pvParameter)
 
       if (bme680_get_results_float(&sensor, &values) == ESP_OK)
       {
-        ESP_LOGI(TAG, "%.2f °C, %.2f %%",
+        ESP_LOGI(TAG, "Raw: %.2f °C, %.2f %%",
                  values.temperature, values.humidity);
-        global_inside_temperature = values.temperature;
+        ESP_LOGI(TAG, "Compensated: %.2f °C", values.temperature + TEMPERATURE_OFFSET);
+        global_inside_temperature = values.temperature + TEMPERATURE_OFFSET;
         xEventGroupSetBits(global_event_group, IS_PRECISE_INSIDE_TEMPERATURE_READING_DONE_BIT);
         xEventGroupSetBits(global_event_group, IS_INSIDE_TEMPERATURE_READING_DONE_BIT);
       }

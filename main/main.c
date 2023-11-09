@@ -30,7 +30,13 @@ static const uint8_t DELAY_UNTIL_SYSTEM_STATE_FIRST_PRINT_SECS = 10;
 
 void app_main(void)
 {
-  nvs_flash_init();
+  esp_err_t err = nvs_flash_init();
+  if (err == ESP_ERR_NVS_NO_FREE_PAGES || err == ESP_ERR_NVS_NEW_VERSION_FOUND)
+  {
+    nvs_flash_erase();
+    nvs_flash_init();
+  }
+
   global_event_group = xEventGroupCreate();
   wifi_connect();
   i2cdev_init();
