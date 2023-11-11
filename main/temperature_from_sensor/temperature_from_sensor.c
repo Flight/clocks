@@ -23,7 +23,7 @@ static const uint8_t REFRESH_INTERVAL_MINS = 1;
 // so we need to add an offset to the temperature
 // This offset is determined by measuring the temperature with a
 // precise thermometer and the BME680 at the same time
-static const float TEMPERATURE_OFFSET = -2.9;
+static const float TEMPERATURE_OFFSET = -3;
 
 void temperature_from_sensor_task(void *pvParameter)
 {

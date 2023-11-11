@@ -8,6 +8,7 @@
 #include <esp_ota_ops.h>
 #include <esp_http_client.h>
 #include <esp_https_ota.h>
+#include <esp_app_format.h>
 #include <string.h>
 #include <mbedtls/sha256.h>
 
@@ -28,38 +29,6 @@ static size_t stored_hash_size = HASH_LEN;
 static uint8_t sha_256_current[HASH_LEN] = {0};
 static uint8_t sha_256_stored[HASH_LEN] = {0};
 static nvs_handle_t ota_storage_handle;
-
-static esp_err_t _http_event_handler(esp_http_client_event_t *evt)
-{
-  switch (evt->event_id)
-  {
-  case HTTP_EVENT_ERROR:
-    ESP_LOGE(TAG, "HTTP_EVENT_ERROR");
-    break;
-  case HTTP_EVENT_ON_CONNECTED:
-    ESP_LOGD(TAG, "HTTP_EVENT_ON_CONNECTED");
-    break;
-  case HTTP_EVENT_HEADER_SENT:
-    ESP_LOGD(TAG, "HTTP_EVENT_HEADER_SENT");
-    break;
-  case HTTP_EVENT_ON_HEADER:
-    ESP_LOGD(TAG, "HTTP_EVENT_ON_HEADER, key=%s, value=%s", evt->header_key, evt->header_value);
-    break;
-  case HTTP_EVENT_ON_DATA:
-    ESP_LOGD(TAG, "HTTP_EVENT_ON_DATA, len=%d", evt->data_len);
-    break;
-  case HTTP_EVENT_ON_FINISH:
-    ESP_LOGD(TAG, "HTTP_EVENT_ON_FINISH");
-    break;
-  case HTTP_EVENT_DISCONNECTED:
-    ESP_LOGD(TAG, "HTTP_EVENT_DISCONNECTED");
-    break;
-  case HTTP_EVENT_REDIRECT:
-    ESP_LOGD(TAG, "HTTP_EVENT_REDIRECT");
-    break;
-  }
-  return ESP_OK;
-}
 
 static void print_sha256(const uint8_t *image_hash, const char *label)
 {
@@ -103,73 +72,11 @@ static void check_current_firmware(void)
   }
 }
 
-static bool check_if_update_available()
-{
-  bool result = false;
-
-  esp_http_client_config_t config = {
-      .url = FIRMWARE_UPGRADE_URL,
-      .cert_pem = (char *)server_cert_pem_start,
-      .event_handler = _http_event_handler,
-  };
-
-  esp_http_client_handle_t client = esp_http_client_init(&config);
-  mbedtls_sha256_context sha_ctx;
-  uint8_t sha_256_downloaded[HASH_LEN] = {0};
-
-  mbedtls_sha256_init(&sha_ctx);
-  mbedtls_sha256_starts(&sha_ctx, 0);
-
-  if (esp_http_client_open(client, 0) != ESP_OK)
-  {
-    ESP_LOGE(TAG, "HTTP client open failed");
-  }
-  else
-  {
-    int data_read;
-    unsigned char ota_buf[OTA_BUF_SIZE];
-
-    while ((data_read = esp_http_client_read(client, (char *)ota_buf, OTA_BUF_SIZE)) > 0)
-    {
-      mbedtls_sha256_update(&sha_ctx, ota_buf, data_read);
-    }
-
-    mbedtls_sha256_finish(&sha_ctx, sha_256_downloaded);
-    mbedtls_sha256_free(&sha_ctx);
-
-    if (data_read >= 0)
-    {
-      ESP_LOGI(TAG, "Download and hash calculation complete");
-      print_sha256(sha_256_current, "COMPARING! Stored hash:");
-      print_sha256(sha_256_downloaded, "COMPARING! Downloaded hash: ");
-
-      result = memcmp(sha_256_current, sha_256_downloaded, HASH_LEN) != 0;
-      if (result)
-      {
-        ESP_LOGI(TAG, "Remote firmware is different from current. Starting update.");
-      }
-      else
-      {
-        ESP_LOGI(TAG, "Current firmware is up to date. Skipping update.");
-      }
-    }
-    else
-    {
-      ESP_LOGE(TAG, "Download or hash calculation failed");
-    }
-  }
-
-  esp_http_client_close(client);
-  esp_http_client_cleanup(client);
-  return result;
-}
-
 static void update_firmware()
 {
   esp_http_client_config_t config = {
       .url = FIRMWARE_UPGRADE_URL,
       .cert_pem = (char *)server_cert_pem_start,
-      .event_handler = _http_event_handler,
       .keep_alive_enable = true,
   };
 
@@ -197,6 +104,7 @@ static void update_firmware()
   ESP_LOGI(TAG, "Stored new firmware hash in NVS.");
 
   ESP_LOGI(TAG, "Restarting to the new firmware...");
+  ESP_LOGW(TAG, "Please stop the web server to prevent the update loop!");
   nvs_close(ota_storage_handle);
   esp_restart();
 }
@@ -210,13 +118,8 @@ void ota_update_task(void *pvParameter)
 
   vTaskDelay(1000 * TIME_BEFORE_UPDATE_CHECK_SECS / portTICK_PERIOD_MS);
 
-  if (!check_if_update_available())
-  {
-    nvs_close(ota_storage_handle);
-    vTaskDelete(NULL);
-
-    return;
-  }
+  nvs_close(ota_storage_handle);
+  vTaskDelete(NULL);
 
   update_firmware();
 }

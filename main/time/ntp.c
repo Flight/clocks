@@ -24,14 +24,14 @@ void ntp_task(void *pvParameter)
   ESP_LOGI(TAG, "Init started");
   esp_sntp_config_t config = ESP_NETIF_SNTP_DEFAULT_CONFIG("pool.ntp.org");
 
-  ESP_LOGI(TAG, "Waiting for Wi-Fi");
-  xEventGroupWaitBits(global_event_group, IS_WIFI_CONNECTED_BIT, pdFALSE, pdTRUE, portMAX_DELAY);
-
-  esp_netif_sntp_init(&config);
-  ESP_LOGI(TAG, "Init done");
-
   while (true)
   {
+    ESP_LOGI(TAG, "Waiting for Wi-Fi");
+    xEventGroupWaitBits(global_event_group, IS_WIFI_CONNECTED_BIT, pdFALSE, pdTRUE, portMAX_DELAY);
+
+    esp_netif_sntp_init(&config);
+    ESP_LOGI(TAG, "Init done");
+
     while (retry_count < MAX_RETRIES)
     {
       esp_err_t err = esp_netif_sntp_sync_wait(1000 * UPDATE_TIMEOUT_SECS / portTICK_PERIOD_MS);
@@ -48,14 +48,13 @@ void ntp_task(void *pvParameter)
       {
         ESP_LOGI(TAG, "Trying to repeat in %d seconds.", RETRY_SECS);
       }
-
-      vTaskDelay(1000 * RETRY_SECS / portTICK_PERIOD_MS);
-      retry_count++;
-
-      if (retry_count == MAX_RETRIES)
+      else
       {
         ESP_LOGE(TAG, "Can't fetch the time. Next retry in %d hours.", REFRESH_INTERVAL_HOURS);
       }
+
+      vTaskDelay(1000 * RETRY_SECS / portTICK_PERIOD_MS);
+      retry_count++;
     }
 
     vTaskDelay(1000 * 60 * 60 * REFRESH_INTERVAL_HOURS / portTICK_PERIOD_MS);

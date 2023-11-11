@@ -201,19 +201,19 @@ void temperature_from_api_task(void *pvParameter)
   char full_url[256];
   sprintf(full_url, "%scurrent.json?key=%s&q=%s&aqi=no", WEATHER_API_URL, WEATHER_API_KEY, WEATHER_CITY);
 
-  ESP_LOGI(TAG, "Waiting for Wi-Fi");
-  xEventGroupWaitBits(global_event_group, IS_WIFI_CONNECTED_BIT, pdFALSE, pdTRUE, portMAX_DELAY);
+  esp_http_client_config_t config = {
+      .url = full_url,
+      .event_handler = _http_event_handler,
+      .cert_pem = api_weatherapi_com_pem_start,
+      .timeout_ms = 20000,
+      .buffer_size = 4096};
 
   while (true)
   {
     xEventGroupClearBits(global_event_group, IS_OUTSIDE_TEMPERATURE_READING_DONE_BIT);
 
-    esp_http_client_config_t config = {
-        .url = full_url,
-        .event_handler = _http_event_handler,
-        .cert_pem = api_weatherapi_com_pem_start,
-        .timeout_ms = 20000,
-        .buffer_size = 4096};
+    ESP_LOGI(TAG, "Waiting for Wi-Fi");
+    xEventGroupWaitBits(global_event_group, IS_WIFI_CONNECTED_BIT, pdFALSE, pdTRUE, portMAX_DELAY);
 
     esp_http_client_handle_t client = esp_http_client_init(&config);
 
