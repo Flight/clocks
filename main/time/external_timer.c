@@ -18,7 +18,6 @@ static const gpio_num_t DS3231_SDA_PIN = CONFIG_SDA_PIN;
 static const gpio_num_t DS3231_SCL_PIN = CONFIG_SCL_PIN;
 
 static const uint8_t TIME_REFRESH_INTERVAL_MINS = 30;
-static const uint8_t TEMPERATURE_REFRESH_INTERVAL_MINS = 1;
 
 static i2c_dev_t timer;
 
@@ -60,38 +59,11 @@ static void copy_time_from_clocks_to_sytem_time()
   settimeofday(&now, NULL);
 }
 
-static void update_temperature()
+void external_timer_task(void *pvParameters)
 {
-  float temperature;
-  if (ds3231_get_temp_float(&timer, &temperature) != ESP_OK)
-  {
-    ESP_LOGE(TAG, "Could not get temperature");
-    return;
-  }
+  ESP_LOGI(TAG, "Init");
+  ds3231_init_desc(&timer, 0, DS3231_SDA_PIN, DS3231_SCL_PIN);
 
-  ESP_LOGI(TAG, "Saving non-precise temperature: %.2f", temperature);
-  global_inside_temperature = temperature;
-  xEventGroupSetBits(global_event_group, IS_INSIDE_TEMPERATURE_READING_DONE_BIT);
-}
-
-static void clocks_temperature_task(void *pvParameters)
-{
-  while (true)
-  {
-    EventBits_t uxBits = xEventGroupGetBits(global_event_group);
-
-    // Setting the inside temperature if the precise one is not ready yet
-    if (!(uxBits & IS_PRECISE_INSIDE_TEMPERATURE_READING_DONE_BIT))
-    {
-      update_temperature();
-    }
-
-    vTaskDelay(1000 * 60 * TEMPERATURE_REFRESH_INTERVAL_MINS / portTICK_PERIOD_MS);
-  }
-}
-
-static void clocks_time_task(void *pvParameters)
-{
   while (true)
   {
     EventBits_t uxBits = xEventGroupGetBits(global_event_group);
@@ -111,15 +83,4 @@ static void clocks_time_task(void *pvParameters)
 
     vTaskDelay(1000 * 10 * TIME_REFRESH_INTERVAL_MINS / portTICK_PERIOD_MS);
   }
-}
-
-void external_timer_task(void *pvParameters)
-{
-  ESP_LOGI(TAG, "Init");
-  ds3231_init_desc(&timer, 0, DS3231_SDA_PIN, DS3231_SCL_PIN);
-
-  xTaskCreate(clocks_temperature_task, "clocks_temperature_task", configMINIMAL_STACK_SIZE * 2, NULL, 1, NULL);
-  xTaskCreate(clocks_time_task, "clocks_time_task", configMINIMAL_STACK_SIZE * 2, NULL, 1, NULL);
-
-  vTaskDelete(NULL);
 }
