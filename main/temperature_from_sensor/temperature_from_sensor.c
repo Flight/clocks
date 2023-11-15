@@ -30,6 +30,7 @@ void temperature_from_sensor_task(void *pvParameter)
   bme680_t sensor;
   memset(&sensor, 0, sizeof(bme680_t));
 
+  ESP_LOGI(TAG, "Init start");
   bme680_init_desc(&sensor, ADDR, PORT, SDA_PIN, SCL_PIN);
   bme680_init_sensor(&sensor);
   bme680_use_heater_profile(&sensor, BME680_HEATER_NOT_USED);
@@ -37,11 +38,14 @@ void temperature_from_sensor_task(void *pvParameter)
 
   uint32_t measurement_duration;
   bme680_get_measurement_duration(&sensor, &measurement_duration);
+  ESP_LOGI(TAG, "Init end");
 
   bme680_values_float_t values;
 
   while (true)
   {
+    xEventGroupClearBits(global_event_group, IS_PRECISE_INSIDE_TEMPERATURE_READING_DONE_BIT);
+
     if (bme680_force_measurement(&sensor) == ESP_OK)
     {
       // passive waiting until measurement results are available
@@ -55,17 +59,12 @@ void temperature_from_sensor_task(void *pvParameter)
         global_inside_temperature = values.temperature + TEMPERATURE_OFFSET;
         xEventGroupSetBits(global_event_group, IS_PRECISE_INSIDE_TEMPERATURE_READING_DONE_BIT);
         xEventGroupSetBits(global_event_group, IS_INSIDE_TEMPERATURE_READING_DONE_BIT);
+        vTaskDelay(1000 * 60 * REFRESH_INTERVAL_MINS / portTICK_PERIOD_MS);
+        continue;
       }
-      else
-      {
-        xEventGroupClearBits(global_event_group, IS_PRECISE_INSIDE_TEMPERATURE_READING_DONE_BIT);
-      }
-    }
-    else
-    {
-      xEventGroupClearBits(global_event_group, IS_PRECISE_INSIDE_TEMPERATURE_READING_DONE_BIT);
     }
 
+    ESP_LOGE(TAG, "Can't measure the temperature");
     vTaskDelay(1000 * 60 * REFRESH_INTERVAL_MINS / portTICK_PERIOD_MS);
   }
 }
