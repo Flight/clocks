@@ -58,5 +58,6 @@ void ntp_task(void *pvParameter)
     }
 
     vTaskDelay(1000 * 60 * 60 * REFRESH_INTERVAL_HOURS / portTICK_PERIOD_MS);
+    retry_count = 0;
   }
 }

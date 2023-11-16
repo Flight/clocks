@@ -5,63 +5,50 @@
 #include <string.h>
 
 #include "sdkconfig.h"
-#include "bme680.h"
+#include "sht3x.h"
 #include "global_event_group.h"
 
 #include "temperature_from_sensor.h"
 
 #define PORT 0
-#define ADDR BME680_I2C_ADDR_1 // Try the BME680_I2C_ADDR_0 if this doesn't work
+#define ADDR CONFIG_SHT3X_ADDR
 
-static const char *TAG = "BME680 Sensor";
+static const char *TAG = "SHT3X Sensor";
 
 static const gpio_num_t SDA_PIN = CONFIG_SDA_PIN;
 static const gpio_num_t SCL_PIN = CONFIG_SCL_PIN;
 
 static const uint8_t REFRESH_INTERVAL_MINS = 1;
-// BME680 is very unprecise because of the self-heating issue
-// so we need to add an offset to the temperature
-// This offset is determined by measuring the temperature with a
-// precise thermometer and the BME680 at the same time
-static const float TEMPERATURE_OFFSET = -3;
 
 void temperature_from_sensor_task(void *pvParameter)
 {
-  bme680_t sensor;
-  memset(&sensor, 0, sizeof(bme680_t));
+  float temperature;
+  float humidity;
+
+  sht3x_t sensor;
+  memset(&sensor, 0, sizeof(sht3x_t));
 
   ESP_LOGI(TAG, "Init start");
-  bme680_init_desc(&sensor, ADDR, PORT, SDA_PIN, SCL_PIN);
-  bme680_init_sensor(&sensor);
-  bme680_use_heater_profile(&sensor, BME680_HEATER_NOT_USED);
-  bme680_set_ambient_temperature(&sensor, 22);
-
-  uint32_t measurement_duration;
-  bme680_get_measurement_duration(&sensor, &measurement_duration);
+  sht3x_init_desc(&sensor, ADDR, PORT, SDA_PIN, SCL_PIN);
+  sht3x_init(&sensor);
+  uint8_t measurement_duration = sht3x_get_measurement_duration(SHT3X_HIGH);
   ESP_LOGI(TAG, "Init end");
-
-  bme680_values_float_t values;
 
   while (true)
   {
-    xEventGroupClearBits(global_event_group, IS_PRECISE_INSIDE_TEMPERATURE_READING_DONE_BIT);
+    xEventGroupClearBits(global_event_group, IS_INSIDE_TEMPERATURE_READING_DONE_BIT);
 
-    if (bme680_force_measurement(&sensor) == ESP_OK)
+    sht3x_start_measurement(&sensor, SHT3X_SINGLE_SHOT, SHT3X_HIGH);
+
+    vTaskDelay(measurement_duration);
+
+    if (sht3x_get_results(&sensor, &temperature, &humidity) == ESP_OK)
     {
-      // passive waiting until measurement results are available
-      vTaskDelay(measurement_duration);
-
-      if (bme680_get_results_float(&sensor, &values) == ESP_OK)
-      {
-        ESP_LOGI(TAG, "Raw: %.2f °C, %.2f %%",
-                 values.temperature, values.humidity);
-        ESP_LOGI(TAG, "Compensated: %.2f °C", values.temperature + TEMPERATURE_OFFSET);
-        global_inside_temperature = values.temperature + TEMPERATURE_OFFSET;
-        xEventGroupSetBits(global_event_group, IS_PRECISE_INSIDE_TEMPERATURE_READING_DONE_BIT);
-        xEventGroupSetBits(global_event_group, IS_INSIDE_TEMPERATURE_READING_DONE_BIT);
-        vTaskDelay(1000 * 60 * REFRESH_INTERVAL_MINS / portTICK_PERIOD_MS);
-        continue;
-      }
+      ESP_LOGI(TAG, "Temperature: %.2f °C, %.2f %%\n", temperature, humidity);
+      global_inside_temperature = temperature;
+      xEventGroupSetBits(global_event_group, IS_INSIDE_TEMPERATURE_READING_DONE_BIT);
+      vTaskDelay(1000 * 60 * REFRESH_INTERVAL_MINS / portTICK_PERIOD_MS);
+      continue;
     }
 
     ESP_LOGE(TAG, "Can't measure the temperature");

@@ -69,8 +69,8 @@ static float get_temperature_from_json(char *json_string)
 
 static esp_err_t _http_event_handler(esp_http_client_event_t *evt)
 {
-  static char *output_buffer; // Buffer to store response of http request from event handler
-  static int output_len;      // Stores number of bytes read
+  static char *output_buffer = NULL; // Buffer to store response of http request from event handler
+  static int output_length = 0;      // Stores number of bytes read
 
   switch (evt->event_id)
   {
@@ -92,57 +92,45 @@ static esp_err_t _http_event_handler(esp_http_client_event_t *evt)
 
   case HTTP_EVENT_ON_DATA:
     ESP_LOGD(TAG, "HTTP_EVENT_ON_DATA, len=%d", evt->data_len);
-    // Clean the buffer in case of a new request
-    if (output_len == 0 && evt->user_data)
+
+    if (esp_http_client_is_chunked_response(evt->client))
     {
-      memset(evt->user_data, 0, MAX_HTTP_OUTPUT_BUFFER);
+      ESP_LOGI(TAG, "The data is chunked");
+      // Reallocate buffer for chunked response
+      char *temp_buffer = realloc(output_buffer, output_length + evt->data_len + 1);
+      if (!temp_buffer)
+      {
+        ESP_LOGE(TAG, "Failed to allocate memory for output buffer");
+        if (output_buffer)
+        {
+          free(output_buffer);
+          output_buffer = NULL;
+          output_length = 0;
+        }
+        return ESP_FAIL;
+      }
+      output_buffer = temp_buffer;
+    }
+    else if (output_buffer == NULL)
+    {
+      ESP_LOGI(TAG, "The data is not chunked");
+      // Allocate buffer for non-chunked response
+      int content_length = esp_http_client_get_content_length(evt->client);
+      output_buffer = (char *)calloc(content_length + 1, sizeof(char));
+      if (!output_buffer)
+      {
+        ESP_LOGE(TAG, "Failed to allocate memory for output buffer");
+        return ESP_FAIL;
+      }
     }
 
-    int copy_len = 0;
-    if (evt->user_data)
+    // Copy data to buffer
+    if (evt->data_len)
     {
-      copy_len = MIN(evt->data_len, (MAX_HTTP_OUTPUT_BUFFER - output_len));
-      if (copy_len)
-      {
-        memcpy(evt->user_data + output_len, evt->data, copy_len);
-      }
+      int copy_len = MIN(evt->data_len, (MAX_HTTP_OUTPUT_BUFFER - output_length));
+      memcpy(output_buffer + output_length, evt->data, copy_len);
+      output_length += copy_len;
     }
-    else
-    {
-      if (esp_http_client_is_chunked_response(evt->client))
-      {
-        ESP_LOGI(TAG, "The data is chunked");
-        // If chunked, reallocate buffer to accumulate more data
-        output_buffer = realloc(output_buffer, output_len + evt->data_len + 1);
-        if (!output_buffer)
-        {
-          ESP_LOGE(TAG, "Failed to allocate memory for output buffer");
-          return ESP_FAIL;
-        }
-        copy_len = evt->data_len;
-      }
-      else
-      {
-        ESP_LOGI(TAG, "The data is not chunked");
-        int content_len = esp_http_client_get_content_length(evt->client);
-        if (output_buffer == NULL)
-        {
-          output_buffer = (char *)calloc(content_len + 1, sizeof(char));
-          output_len = 0;
-          if (output_buffer == NULL)
-          {
-            ESP_LOGE(TAG, "Failed to allocate memory for output buffer");
-            return ESP_FAIL;
-          }
-        }
-        copy_len = MIN(evt->data_len, (content_len - output_len));
-      }
-      if (copy_len)
-      {
-        memcpy(output_buffer + output_len, evt->data, copy_len);
-      }
-    }
-    output_len += copy_len;
     break;
 
   case HTTP_EVENT_ON_FINISH:
@@ -163,12 +151,12 @@ static esp_err_t _http_event_handler(esp_http_client_event_t *evt)
 
       free(output_buffer);
       output_buffer = NULL;
+      output_length = 0;
     }
     else
     {
       ESP_LOGE(TAG, "Output buffer is 0!");
     }
-    output_len = 0;
     break;
 
   case HTTP_EVENT_DISCONNECTED:
@@ -184,8 +172,8 @@ static esp_err_t _http_event_handler(esp_http_client_event_t *evt)
     {
       free(output_buffer);
       output_buffer = NULL;
+      output_length = 0;
     }
-    output_len = 0;
     break;
 
   case HTTP_EVENT_REDIRECT:

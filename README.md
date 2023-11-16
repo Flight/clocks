@@ -18,7 +18,7 @@ The project started from the dead section of the built-in clocks in my bath mirr
 
 - **TM1637** 7-segment display.
 - _Optional:_ **HW-072** Light Sensor. Switching between full and minimal brightness based on the photoresistor.
-- _Optional:_ **BME680** environment sensor. Measuring temperature (and optionally humidity).
+- _Optional:_ **SHT3X** environment sensor. Measuring temperature (and optionally humidity).
 - _Optional:_ **DS3231** external timer. Saving time to the separate precise clocks.
   Also provides fallback non-precise temperature (+-1.5 C).
 - _Optional:_ **Temperature from API** over Wi-Fi and HTTPS. [api.weatherapi.com](https://www.weatherapi.com)

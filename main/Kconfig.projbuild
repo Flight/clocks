@@ -66,6 +66,16 @@ menu "CLOCKS GPIO SETTINGS"
         Input only ports can be also used as the sensor is only outputing the data.
 endmenu
 
+menu "CLOCKS SHT3X TEMPERATURE SENSOR SETTINGS"
+  config SHT3X_ADDR
+    hex "I2C address of SHT3x"
+    default 0x44
+    help
+        I2C address of SHT3x, either 0x44 or 0x45. When ADDR pin is
+        grounded, choose 0x44. When ADDR pin is pulled up to VDD, choose
+        0x45.
+endmenu
+
 menu "CLOCKS WI-FI SETTINGS"
   config WIFI_SSID
     string "Wi-Fi SSID"
