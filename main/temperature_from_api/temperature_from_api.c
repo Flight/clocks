@@ -33,37 +33,34 @@ static float temperature_from_json = TEMPERATURE_ERROR_CODE;
 static float get_temperature_from_json(char *json_string)
 {
   float temperature = TEMPERATURE_ERROR_CODE;
-
   ESP_LOGI(TAG, "JSON string: %s", json_string);
 
   cJSON *response_json = cJSON_Parse(json_string);
-  if (response_json != NULL)
+  if (response_json == NULL)
   {
-    cJSON *current = cJSON_GetObjectItem(response_json, "current");
-    if (current != NULL)
-    {
-      cJSON *temperature_json = cJSON_GetObjectItem(current, "temp_c");
-      if (temperature_json != NULL && cJSON_IsNumber(temperature_json))
-      {
-        float temperature = temperature_json->valuedouble;
-        return temperature;
-      }
-      else
-      {
-        ESP_LOGE(TAG, "Failed to get 'temp_c' or it's not a number");
-      }
-    }
-    else
-    {
-      ESP_LOGE(TAG, "Failed to get 'current' from JSON response");
-    }
+    ESP_LOGE(TAG, "Failed to parse JSON response");
+    return temperature;
+  }
+
+  cJSON *current = cJSON_GetObjectItem(response_json, "current");
+  if (current == NULL)
+  {
+    ESP_LOGE(TAG, "Failed to get 'current' from JSON response");
     cJSON_Delete(response_json);
+    return temperature;
+  }
+
+  cJSON *temperature_json = cJSON_GetObjectItem(current, "temp_c");
+  if (temperature_json != NULL && cJSON_IsNumber(temperature_json))
+  {
+    temperature = temperature_json->valuedouble;
   }
   else
   {
-    ESP_LOGE(TAG, "Failed to parse JSON response");
+    ESP_LOGE(TAG, "Failed to get 'temp_c' or it's not a number");
   }
 
+  cJSON_Delete(response_json);
   return temperature;
 }
 

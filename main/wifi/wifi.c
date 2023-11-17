@@ -38,6 +38,7 @@ static void wifi_event_handler(void *event_handler_arg, esp_event_base_t event_b
     xEventGroupClearBits(global_event_group, IS_WIFI_CONNECTED_BIT);
     if (retry_num < MAXIMUM_RETRY)
     {
+      esp_wifi_disconnect();
       esp_wifi_connect();
       retry_num++;
       ESP_LOGI(TAG, "Retrying to connect to SSID: %s, password: %.2s... (%lu)", SSID, PASSWORD, retry_num);

@@ -5,6 +5,7 @@
 #include <esp_heap_caps.h>
 
 static const u_int8_t UPDATE_INTERVAL_MINS = 2;
+static const u_int8_t AUTO_RESTART_IF_HEAP_LESS_KB = 100;
 
 static const char *TASK_STATES[] = {
     "Running",   // eRunning
@@ -84,6 +85,11 @@ static void printSystemState(void)
 
     // The array is no longer needed, free the memory it consumes.
     vPortFree(pxTaskStatusArray);
+
+    if (free_heap / 1024 < AUTO_RESTART_IF_HEAP_LESS_KB)
+    {
+      // esp_restart();
+    }
   }
 }
 
