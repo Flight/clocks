@@ -43,7 +43,9 @@ static void print_sha256(const uint8_t *image_hash, const char *label)
 
 static void check_current_firmware(void)
 {
-  ESP_LOGI(TAG, "Checkng current firmware...");
+  ESP_LOGI(TAG, "Checking current firmware...");
+  const esp_partition_t *running_partition = esp_ota_get_running_partition();
+
   nvs_open("storage", NVS_READWRITE, &ota_storage_handle);
 
   // Read the stored hash
@@ -59,8 +61,22 @@ static void check_current_firmware(void)
   print_sha256(sha_256_stored, "Stored hash: ");
 
   // Get the SHA-256 of the current firmware
-  esp_partition_get_sha256(esp_ota_get_running_partition(), sha_256_current);
+  esp_partition_get_sha256(running_partition, sha_256_current);
   print_sha256(sha_256_current, "Current hash: ");
+
+  // Check if the running partition is the factory partition
+  bool is_factory_partition = running_partition->type == ESP_PARTITION_TYPE_APP &&
+                              running_partition->subtype == ESP_PARTITION_SUBTYPE_APP_FACTORY;
+
+  if (is_factory_partition)
+  {
+    ESP_LOGI(TAG, "The current partition is factory one.");
+    nvs_set_blob(ota_storage_handle, "firmware_hash", sha_256_current, HASH_LEN);
+    nvs_commit(ota_storage_handle);
+    ESP_LOGI(TAG, "Stored new firmware hash in NVS.");
+    nvs_close(ota_storage_handle);
+    return;
+  }
 
   // If the stored hash is the same size and matches the current one
   // We can mark it as valid and cancel the rollback
@@ -70,9 +86,11 @@ static void check_current_firmware(void)
     esp_ota_mark_app_valid_cancel_rollback();
     esp_ota_erase_last_boot_app_partition();
   }
+
+  nvs_close(ota_storage_handle);
 }
 
-static void update_firmware()
+static void check_for_updates()
 {
   esp_http_client_config_t config = {
       .url = FIRMWARE_UPGRADE_URL,
@@ -88,9 +106,7 @@ static void update_firmware()
 
   if (err != ESP_OK)
   {
-    ESP_LOGE(TAG, "OTA Update failed!");
-    nvs_close(ota_storage_handle);
-    vTaskDelete(NULL);
+    ESP_LOGW(TAG, "OTA Update failed!");
     return;
   }
 
@@ -99,7 +115,7 @@ static void update_firmware()
   // If update was successful, store the new hash
   esp_partition_get_sha256(esp_ota_get_running_partition(), sha_256_current);
   print_sha256(sha_256_current, "New hash: ");
-  err = nvs_set_blob(ota_storage_handle, "firmware_hash", sha_256_current, HASH_LEN);
+  nvs_set_blob(ota_storage_handle, "firmware_hash", sha_256_current, HASH_LEN);
   nvs_commit(ota_storage_handle); // Commit changes to NVS
   ESP_LOGI(TAG, "Stored new firmware hash in NVS.");
 
@@ -111,15 +127,15 @@ static void update_firmware()
 
 void ota_update_task(void *pvParameter)
 {
-  check_current_firmware();
-
   ESP_LOGI(TAG, "Waiting for Wi-Fi");
   xEventGroupWaitBits(global_event_group, IS_WIFI_CONNECTED_BIT, pdFALSE, pdTRUE, portMAX_DELAY);
 
   vTaskDelay(1000 * TIME_BEFORE_UPDATE_CHECK_SECS / portTICK_PERIOD_MS);
 
+  check_current_firmware();
+  check_for_updates();
+
+  ESP_LOGI(TAG, "Cleaning-up OTA update task.");
   nvs_close(ota_storage_handle);
   vTaskDelete(NULL);
-
-  update_firmware();
 }
