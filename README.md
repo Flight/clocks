@@ -17,12 +17,14 @@ The project started from the dead section of the built-in clocks in my bath mirr
 - Based on **ESP32** microcontroller (tested with ESP32, ESP32C3 and ESP32S3). I've used the **[WeActStudio ESP32-C3FH4 Core Board](https://github.com/WeActStudio/WeActStudio.ESP32C3CoreBoard)**.
 
 - **TM1637** 7-segment display.
-- _Optional:_ **HW-072** Light Sensor. Switching between full and minimal brightness based on the photoresistor.
-- _Optional:_ **SHT3X** environment sensor. Measuring temperature (and optionally humidity).
+- _Optional:_ **NTP Sync**
 - _Optional:_ **DS3231** external timer. Saving time to the separate precise clocks.
+- _Optional:_ **SHT3X** environment sensor. Measuring temperature (and optionally humidity).
   Also provides fallback non-precise temperature (+-1.5 C).
 - _Optional:_ **Temperature from API** over Wi-Fi and HTTPS. [api.weatherapi.com](https://www.weatherapi.com)
 - _Optional:_ **OTA Updates** over Wi-Fi and HTTPS.
+- _Optional:_ **GL5516** Photo resistor. Switching between full and minimal brightness using ADC.
+- _Optional:_ **HW-072** Light Sensor. Switching between full and minimal brightness based on the photoresistor output (both analog and digital).
 
 ## Requirements
 

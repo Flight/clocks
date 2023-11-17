@@ -9,10 +9,10 @@
 
 #include "light.h"
 
-static const char *TAG = "MH Light Sensor";
+static const char *TAG = "Light Sensor ADC";
 
 static const gpio_num_t LIGHT_SENSOR_PIN = CONFIG_LIGHT_SENSOR_PIN;
-static const u_int16_t ADC_SWITCH_VALUE = 3550;
+static const u_int16_t ADC_SWITCH_VALUE = 800; // 3550 for MH light sensor breakout board
 static const u_int16_t ADC_DRIFTING_TOLERANCE = 50;
 
 void light_sensor_adc_task(void *pvParameter)
@@ -29,7 +29,7 @@ void light_sensor_adc_task(void *pvParameter)
     u_int16_t adc_value = adc1_get_raw(LIGHT_SENSOR_PIN);
     if (adc_value < ADC_SWITCH_VALUE - ADC_DRIFTING_TOLERANCE || adc_value > ADC_SWITCH_VALUE + ADC_DRIFTING_TOLERANCE)
     {
-      global_is_light_on = adc_value < ADC_SWITCH_VALUE;
+      global_is_light_on = adc_value > ADC_SWITCH_VALUE;
     }
 
     if (!is_event_bit_set)
