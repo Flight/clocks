@@ -7,9 +7,10 @@
 #include "sdkconfig.h"
 #include "global_event_group.h"
 
-#include "temperature_from_api.h"
+#include "weather_from_api.h"
 
 float global_outside_temperature;
+float global_outside_will_it_rain;
 
 static const char *TAG = "Weather API";
 
@@ -26,42 +27,60 @@ extern const char api_weatherapi_com_pem_end[] asm("_binary_api_weatherapi_com_p
 
 #define MAX_HTTP_OUTPUT_BUFFER 2048
 #define TEMPERATURE_ERROR_CODE -1000
+#define WILL_IT_RAIN_ERROR_CODE -1
 
 static uint8_t retry_count = 0;
 static float temperature_from_json = TEMPERATURE_ERROR_CODE;
+static int8_t will_it_rain_from_json = WILL_IT_RAIN_ERROR_CODE;
 
-static float get_temperature_from_json(char *json_string)
+static void get_data_from_json(char *json_string)
 {
-  float temperature = TEMPERATURE_ERROR_CODE;
+  temperature_from_json = TEMPERATURE_ERROR_CODE;
+  will_it_rain_from_json = WILL_IT_RAIN_ERROR_CODE;
+
   ESP_LOGI(TAG, "JSON string: %s", json_string);
 
   cJSON *response_json = cJSON_Parse(json_string);
   if (response_json == NULL)
   {
     ESP_LOGE(TAG, "Failed to parse JSON response");
-    return temperature;
+    return;
   }
 
   cJSON *current = cJSON_GetObjectItem(response_json, "current");
-  if (current == NULL)
+  if (current != NULL)
   {
-    ESP_LOGE(TAG, "Failed to get 'current' from JSON response");
-    cJSON_Delete(response_json);
-    return temperature;
+    cJSON *temperature_json = cJSON_GetObjectItem(current, "temp_c");
+    if (temperature_json != NULL && cJSON_IsNumber(temperature_json))
+    {
+      temperature_from_json = temperature_json->valuedouble;
+    }
   }
 
-  cJSON *temperature_json = cJSON_GetObjectItem(current, "temp_c");
-  if (temperature_json != NULL && cJSON_IsNumber(temperature_json))
+  // Extracting will_it_rain from JSON
+  cJSON *forecast = cJSON_GetObjectItem(response_json, "forecast");
+  if (forecast != NULL)
   {
-    temperature = temperature_json->valuedouble;
-  }
-  else
-  {
-    ESP_LOGE(TAG, "Failed to get 'temp_c' or it's not a number");
+    cJSON *forecastday = cJSON_GetObjectItem(forecast, "forecastday");
+    if (forecastday != NULL)
+    {
+      cJSON *firstDay = cJSON_GetArrayItem(forecastday, 0);
+      if (firstDay != NULL)
+      {
+        cJSON *day = cJSON_GetObjectItem(firstDay, "day");
+        if (day != NULL)
+        {
+          cJSON *will_it_rain = cJSON_GetObjectItem(day, "daily_will_it_rain");
+          if (will_it_rain != NULL && cJSON_IsNumber(will_it_rain))
+          {
+            will_it_rain_from_json = will_it_rain->valueint;
+          }
+        }
+      }
+    }
   }
 
   cJSON_Delete(response_json);
-  return temperature;
 }
 
 static esp_err_t _http_event_handler(esp_http_client_event_t *evt)
@@ -134,7 +153,7 @@ static esp_err_t _http_event_handler(esp_http_client_event_t *evt)
     ESP_LOGI(TAG, "HTTP_EVENT_ON_FINISH");
     if (output_buffer != NULL)
     {
-      temperature_from_json = get_temperature_from_json(output_buffer);
+      get_data_from_json(output_buffer);
       if (temperature_from_json == TEMPERATURE_ERROR_CODE || strlen(output_buffer) == 0)
       {
         ESP_LOGE(TAG, "Can't get temperature");
@@ -143,7 +162,11 @@ static esp_err_t _http_event_handler(esp_http_client_event_t *evt)
       {
         global_outside_temperature = temperature_from_json;
         ESP_LOGI(TAG, "Temperature is %f", global_outside_temperature);
-        xEventGroupSetBits(global_event_group, IS_OUTSIDE_TEMPERATURE_READING_DONE_BIT);
+        if (will_it_rain_from_json != WILL_IT_RAIN_ERROR_CODE)
+        {
+          ESP_LOGI(TAG, "Will it rain today? %s", will_it_rain_from_json ? "Yes" : "No");
+        }
+        xEventGroupSetBits(global_event_group, IS_OUTSIDE_WEATHER_READING_DONE_BIT);
       }
 
       free(output_buffer);
@@ -181,10 +204,10 @@ static esp_err_t _http_event_handler(esp_http_client_event_t *evt)
   return ESP_OK;
 }
 
-void temperature_from_api_task(void *pvParameter)
+void weather_from_api_task(void *pvParameter)
 {
   char full_url[256];
-  sprintf(full_url, "%scurrent.json?key=%s&q=%s&aqi=no", WEATHER_API_URL, WEATHER_API_KEY, WEATHER_CITY);
+  sprintf(full_url, "%sforecast.json?key=%s&q=%s", WEATHER_API_URL, WEATHER_API_KEY, WEATHER_CITY);
 
   esp_http_client_config_t config = {
       .url = full_url,
@@ -195,7 +218,7 @@ void temperature_from_api_task(void *pvParameter)
 
   while (true)
   {
-    xEventGroupClearBits(global_event_group, IS_OUTSIDE_TEMPERATURE_READING_DONE_BIT);
+    xEventGroupClearBits(global_event_group, IS_OUTSIDE_WEATHER_READING_DONE_BIT);
 
     ESP_LOGI(TAG, "Waiting for Wi-Fi");
     xEventGroupWaitBits(global_event_group, IS_WIFI_CONNECTED_BIT, pdFALSE, pdTRUE, portMAX_DELAY);

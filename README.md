@@ -35,7 +35,7 @@ The project was created using [ESP-IDF plugin](https://docs.espressif.com/projec
 1. Clone the repo `git clone git@github.com:Flight/clocks.git` and go inside: `cd clocks`.
 2. Generate the certificate for weatherapi.com
 
-   `echo -n | openssl s_client -connect 192.168.50.100:443 | sed -ne '/-BEGIN CERTIFICATE-/,/-END CERTIFICATE-/p' > main/temperature_from_api/api_weatherapi_com.pem`
+   `echo -n | openssl s_client -connect 192.168.50.100:443 | sed -ne '/-BEGIN CERTIFICATE-/,/-END CERTIFICATE-/p' > main/weather_from_api/api_weatherapi_com.pem`
 
 3. Generate a certificate for the OTA Updates. Please **don't forget to fill the server name** on this step:
 
