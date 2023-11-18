@@ -5,7 +5,7 @@
 #include <esp_heap_caps.h>
 
 static const u_int8_t UPDATE_INTERVAL_MINS = 2;
-static const u_int8_t AUTO_RESTART_IF_HEAP_LESS_KB = 100;
+static const u_int8_t AUTO_RESTART_IF_HEAP_LESS_KB = 50;
 
 static const char *TASK_STATES[] = {
     "Running",   // eRunning
@@ -83,11 +83,26 @@ static void printSystemState(void)
         total_heap / 1024,
         percentage);
 
+    // Showing system uptime
+    uint32_t system_uptime = esp_log_timestamp() / 1000;
+    uint8_t system_uptime_secs = system_uptime % 60;
+    uint8_t system_uptime_mins = (system_uptime / 60) % 60;
+    uint8_t system_uptime_hours = (system_uptime / 3600) % 24;
+    uint32_t system_uptime_days = (system_uptime / 86400);
+    ESP_LOGI(
+        TAG,
+        "System uptime: %lu days, %d hours, %d minutes, %d seconds",
+        system_uptime_days,
+        system_uptime_hours,
+        system_uptime_mins,
+        system_uptime_secs);
+
     // The array is no longer needed, free the memory it consumes.
     vPortFree(pxTaskStatusArray);
 
     if (free_heap / 1024 < AUTO_RESTART_IF_HEAP_LESS_KB)
     {
+      // Uncomment if the code has memory leaks
       // esp_restart();
     }
   }
