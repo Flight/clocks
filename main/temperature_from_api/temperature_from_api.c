@@ -19,7 +19,7 @@ static const char *WEATHER_CITY = CONFIG_WEATHER_CITY;
 
 static const uint8_t REFRESH_INTERVAL_MINS = 5;
 static const uint8_t RETRY_INTERVAL_SECS = 10;
-static const uint8_t MAX_RETRIES = 10;
+static const uint8_t MAXIMUM_RETRY = 3;
 
 extern const char api_weatherapi_com_pem_start[] asm("_binary_api_weatherapi_com_pem_start");
 extern const char api_weatherapi_com_pem_end[] asm("_binary_api_weatherapi_com_pem_end");
@@ -202,18 +202,21 @@ void temperature_from_api_task(void *pvParameter)
 
     esp_http_client_handle_t client = esp_http_client_init(&config);
 
-    while (retry_count < MAX_RETRIES)
+    if (retry_count < MAXIMUM_RETRY)
     {
       esp_http_client_perform(client);
 
-      if (temperature_from_json != TEMPERATURE_ERROR_CODE)
+      if (temperature_from_json == TEMPERATURE_ERROR_CODE)
       {
-        break;
+        ESP_LOGW(TAG, "Failed to get the weather (attempt %d of %d)", retry_count + 1, MAXIMUM_RETRY);
+        vTaskDelay(1000 * RETRY_INTERVAL_SECS / portTICK_PERIOD_MS);
+        retry_count++;
+        continue;
       }
-
-      ESP_LOGW(TAG, "HTTP GET request failed (attempt %d)", retry_count + 1);
-      vTaskDelay(1000 * RETRY_INTERVAL_SECS / portTICK_PERIOD_MS);
-      retry_count++;
+    }
+    else
+    {
+      ESP_LOGE(TAG, "Can't fetch the weather. Next retry in %d minutes.", REFRESH_INTERVAL_MINS);
     }
 
     esp_http_client_cleanup(client);

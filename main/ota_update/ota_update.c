@@ -71,9 +71,13 @@ static void check_current_firmware(void)
   if (is_factory_partition)
   {
     ESP_LOGI(TAG, "The current partition is factory one.");
-    nvs_set_blob(ota_storage_handle, "firmware_hash", sha_256_current, HASH_LEN);
-    nvs_commit(ota_storage_handle);
-    ESP_LOGI(TAG, "Stored new firmware hash in NVS.");
+    // If the stored hash is not the same as the factory one, save the current hash
+    if (stored_hash_size != HASH_LEN || memcmp(sha_256_current, sha_256_stored, HASH_LEN) != 0)
+    {
+      nvs_set_blob(ota_storage_handle, "firmware_hash", sha_256_current, HASH_LEN);
+      nvs_commit(ota_storage_handle);
+      ESP_LOGI(TAG, "Stored new firmware hash in NVS.");
+    }
     nvs_close(ota_storage_handle);
     return;
   }

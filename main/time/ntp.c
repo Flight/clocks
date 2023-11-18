@@ -16,7 +16,7 @@ static const char *TAG = "NTP";
 static const uint8_t REFRESH_INTERVAL_HOURS = 24;
 static const uint8_t UPDATE_TIMEOUT_SECS = 10;
 static const uint8_t RETRY_SECS = 10;
-static const uint8_t MAX_RETRIES = 3;
+static const uint8_t MAXIMUM_RETRY = 3;
 static uint8_t retry_count = 0;
 
 void ntp_task(void *pvParameter)
@@ -32,7 +32,7 @@ void ntp_task(void *pvParameter)
     esp_netif_sntp_init(&config);
     ESP_LOGI(TAG, "Init done");
 
-    while (retry_count < MAX_RETRIES)
+    while (retry_count < MAXIMUM_RETRY)
     {
       esp_err_t err = esp_netif_sntp_sync_wait(1000 * UPDATE_TIMEOUT_SECS / portTICK_PERIOD_MS);
 
@@ -43,8 +43,8 @@ void ntp_task(void *pvParameter)
         break;
       }
 
-      ESP_LOGW(TAG, "Failed to update system time within %d seconds. (attempt %d of %d)", UPDATE_TIMEOUT_SECS, retry_count + 1, MAX_RETRIES);
-      if (retry_count + 1 < MAX_RETRIES)
+      ESP_LOGW(TAG, "Failed to update system time within %d seconds. (attempt %d of %d)", UPDATE_TIMEOUT_SECS, retry_count + 1, MAXIMUM_RETRY);
+      if (retry_count + 1 < MAXIMUM_RETRY)
       {
         ESP_LOGI(TAG, "Trying to repeat in %d seconds.", RETRY_SECS);
       }

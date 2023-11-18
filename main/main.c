@@ -41,7 +41,6 @@ void app_main(void)
   }
 
   global_event_group = xEventGroupCreate();
-  wifi_connect();
   i2cdev_init();
 
   // Set timezone
@@ -49,13 +48,14 @@ void app_main(void)
   tzset();
 
   xTaskCreatePinnedToCore(&led_task, "LED", configMINIMAL_STACK_SIZE * 2, NULL, 1, NULL, 1);
+  xTaskCreatePinnedToCore(&wifi_task, "Wi-Fi Keeper", configMINIMAL_STACK_SIZE * 3, NULL, 1, NULL, 1);
   xTaskCreatePinnedToCore(&light_sensor_task, "Light Sensor", configMINIMAL_STACK_SIZE * 2, NULL, 1, NULL, 1);
   // xTaskCreatePinnedToCore(&light_sensor_adc_task, "Light Sensor ADC", configMINIMAL_STACK_SIZE * 2, NULL, 1, NULL, 1);
   xTaskCreatePinnedToCore(&external_timer_task, "External Timer", configMINIMAL_STACK_SIZE * 2, NULL, 1, NULL, 1);
   xTaskCreatePinnedToCore(&ntp_task, "NTP", configMINIMAL_STACK_SIZE * 2, NULL, 1, NULL, 1);
   xTaskCreatePinnedToCore(&lcd_tm1637_task, "LCD TM1637", configMINIMAL_STACK_SIZE * 2, NULL, 1, NULL, 1);
   // xTaskCreatePinnedToCore(&temperature_from_sensor_task, "Temp from Sensor", configMINIMAL_STACK_SIZE * 2, NULL, 1, NULL, 1);
-  xTaskCreatePinnedToCore(&temperature_from_api_task, "Temp from API", configMINIMAL_STACK_SIZE * 4, NULL, 1, NULL, 1);
+  xTaskCreatePinnedToCore(&temperature_from_api_task, "Temp from API", configMINIMAL_STACK_SIZE * 3, NULL, 1, NULL, 1);
   xTaskCreatePinnedToCore(&ota_update_task, "OTA Update", configMINIMAL_STACK_SIZE * 4, NULL, 1, NULL, 1);
   // xTaskCreatePinnedToCore(&auto_restart_task, "Auto Restart Task", configMINIMAL_STACK_SIZE * 2, NULL, 1, NULL, 1);
 
