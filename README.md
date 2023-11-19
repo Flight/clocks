@@ -65,7 +65,7 @@ Run the project using the **ESP-IDF Build, Flash and Monitor** button (number 6 
 
    `cd ota_server`
 
-   `sudo npx http-server -S -C ../main/ota_update/cert.pem -p 8070`
+   `sudo npx http-server -S -C ../main/ota_update/cert.pem -p 8070 -c-1`
 
 2. Drop the file `clocks.bin` to `ota_server` folder or setup the build to generate the output file in that folder.
 

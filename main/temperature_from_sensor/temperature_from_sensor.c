@@ -13,6 +13,8 @@
 #define PORT 0
 #define ADDR CONFIG_SHT3X_ADDR
 
+float global_inside_temperature;
+
 static const char *TAG = "SHT3X Sensor";
 
 static const gpio_num_t SDA_PIN = CONFIG_SDA_PIN;

@@ -3,8 +3,7 @@
 #include <esp_system.h>
 #include <esp_log.h>
 
-// Assuming your log tag is defined somewhere
-#define TAG "Auto Restart"
+static const char *TAG = "Auto Restart";
 
 const uint8_t TIMEOUT_HOURS = 4;
 

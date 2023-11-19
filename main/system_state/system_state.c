@@ -9,6 +9,7 @@ static const char *NVS_STORAGE_NAMESPACE = "system_info";
 static const char *NVS_UPTIME_KEY = "uptime_bfr_heap";
 static const char *TAG = "System State";
 
+static const uint8_t DELAY_UNTIL_SYSTEM_STATE_FIRST_PRINT_SECS = 10;
 static const uint8_t UPDATE_INTERVAL_MINS = 2;
 static const uint8_t AUTO_RESTART_IF_HEAP_LESS_KB = 70; // The minimum needed RAM for OTA update is 70KB
 
@@ -54,22 +55,22 @@ static void print_timestamp(uint32_t timestamp, const char *customMessage)
 
 static void print_tasks_list()
 {
-  TaskStatus_t *pxTaskStatusArray;
-  volatile UBaseType_t uxArraySize, x;
-  uint32_t ulTotalRunTime;
+  TaskStatus_t *task_status_array;
+  volatile UBaseType_t tasks_array_length, task_index;
+  uint32_t total_run_time;
 
   // Take a snapshot of the number of tasks in case it changes while this function is executing.
-  uxArraySize = uxTaskGetNumberOfTasks();
+  tasks_array_length = uxTaskGetNumberOfTasks();
 
   // Allocate memory to hold the task information.
-  pxTaskStatusArray = pvPortMalloc(uxArraySize * sizeof(TaskStatus_t));
+  task_status_array = pvPortMalloc(tasks_array_length * sizeof(TaskStatus_t));
 
-  if (pxTaskStatusArray != NULL)
+  if (task_status_array != NULL)
   {
     // Generate the (binary) data.
-    uxArraySize = uxTaskGetSystemState(pxTaskStatusArray, uxArraySize, &ulTotalRunTime);
+    tasks_array_length = uxTaskGetSystemState(task_status_array, tasks_array_length, &total_run_time);
 
-    qsort(pxTaskStatusArray, uxArraySize, sizeof(TaskStatus_t), compare_tasks_by_runtime);
+    qsort(task_status_array, tasks_array_length, sizeof(TaskStatus_t), compare_tasks_by_runtime);
 
     // Print the header.
     ESP_LOGI(TAG, "%-20s %-9s %4s %12s %5s %10s %7s",
@@ -82,20 +83,21 @@ static void print_tasks_list()
              "Percent");
 
     // Display the information about each task.
-    for (x = 0; x < uxArraySize; x++)
+    for (task_index = 0; task_index < tasks_array_length; task_index++)
     {
       ESP_LOGI(TAG, "%-20s %-9s %4u %12lu %5u %10lu %6lu%%",
-               pxTaskStatusArray[x].pcTaskName,
-               TASK_STATES[pxTaskStatusArray[x].eCurrentState],
-               pxTaskStatusArray[x].uxCurrentPriority,
-               pxTaskStatusArray[x].usStackHighWaterMark,
-               pxTaskStatusArray[x].xTaskNumber,
-               pxTaskStatusArray[x].ulRunTimeCounter,
-               ulTotalRunTime ? (pxTaskStatusArray[x].ulRunTimeCounter * 100 / ulTotalRunTime) : 0);
+               task_status_array[task_index].pcTaskName,
+               TASK_STATES[task_status_array[task_index].eCurrentState],
+               task_status_array[task_index].uxCurrentPriority,
+               task_status_array[task_index].usStackHighWaterMark,
+               task_status_array[task_index].xTaskNumber,
+               task_status_array[task_index].ulRunTimeCounter,
+               total_run_time ? (task_status_array[task_index].ulRunTimeCounter * 100 / total_run_time) : 0);
     }
   }
 
-  vPortFree(pxTaskStatusArray);
+  vPortFree(task_status_array);
+  task_status_array = NULL;
 }
 
 void show_last_uptime_before_out_of_memory()
@@ -124,7 +126,7 @@ static void print_system_state()
   uint32_t system_uptime = esp_log_timestamp();
   uint32_t free_heap = esp_get_free_heap_size();
   uint32_t total_heap = heap_caps_get_total_size(MALLOC_CAP_INTERNAL);
-  float percentage = (float)free_heap / total_heap * 100;
+  float free_percentage = (float)free_heap / total_heap * 100;
 
   print_tasks_list();
 
@@ -133,7 +135,7 @@ static void print_system_state()
       "DRAM left %luKB of %luKB (%.2f%%)",
       free_heap / 1024,
       total_heap / 1024,
-      percentage);
+      free_percentage);
 
   print_timestamp(system_uptime, "System uptime: ");
 }
@@ -144,10 +146,10 @@ static void restart_if_free_heap_low()
   uint32_t system_uptime = esp_log_timestamp();
   esp_err_t err;
 
-  if (free_heap_kb / 1024 < AUTO_RESTART_IF_HEAP_LESS_KB)
+  if (free_heap_kb < AUTO_RESTART_IF_HEAP_LESS_KB)
   {
     // Save the system uptime to the RTC memory
-    err = nvs_open("storage", NVS_READWRITE, &uptime_storage_handle);
+    err = nvs_open(NVS_STORAGE_NAMESPACE, NVS_READWRITE, &uptime_storage_handle);
     if (err != ESP_OK)
     {
       return;
@@ -163,6 +165,8 @@ static void restart_if_free_heap_low()
 void system_state_task(void *pvParameter)
 {
   show_last_uptime_before_out_of_memory();
+
+  vTaskDelay(1000 * DELAY_UNTIL_SYSTEM_STATE_FIRST_PRINT_SECS / portTICK_PERIOD_MS);
 
   while (true)
   {
