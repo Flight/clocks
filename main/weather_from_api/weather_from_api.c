@@ -10,7 +10,7 @@
 #include "weather_from_api.h"
 
 float global_outside_temperature;
-float global_outside_will_it_rain;
+int8_t global_outside_will_it_rain;
 
 static const char *TAG = "Weather API";
 
@@ -86,7 +86,7 @@ static void get_data_from_json(char *json_string)
 static esp_err_t _http_event_handler(esp_http_client_event_t *evt)
 {
   static char *output_buffer = NULL; // Buffer to store response of http request from event handler
-  static int output_length = 0;      // Stores number of bytes read
+  static uint32_t output_length = 0; // Stores number of bytes read
 
   switch (evt->event_id)
   {
@@ -131,7 +131,7 @@ static esp_err_t _http_event_handler(esp_http_client_event_t *evt)
     {
       ESP_LOGI(TAG, "The data is not chunked");
       // Allocate buffer for non-chunked response
-      int content_length = esp_http_client_get_content_length(evt->client);
+      uint32_t content_length = esp_http_client_get_content_length(evt->client);
       output_buffer = (char *)calloc(content_length + 1, sizeof(char));
       if (!output_buffer)
       {
@@ -143,7 +143,7 @@ static esp_err_t _http_event_handler(esp_http_client_event_t *evt)
     // Copy data to buffer
     if (evt->data_len)
     {
-      int copy_len = MIN(evt->data_len, (MAX_HTTP_OUTPUT_BUFFER - output_length));
+      uint32_t copy_len = MIN(evt->data_len, (MAX_HTTP_OUTPUT_BUFFER - output_length));
       memcpy(output_buffer + output_length, evt->data, copy_len);
       output_length += copy_len;
     }
@@ -164,6 +164,7 @@ static esp_err_t _http_event_handler(esp_http_client_event_t *evt)
         ESP_LOGI(TAG, "Temperature is %f", global_outside_temperature);
         if (will_it_rain_from_json != WILL_IT_RAIN_ERROR_CODE)
         {
+          global_outside_will_it_rain = will_it_rain_from_json;
           ESP_LOGI(TAG, "Will it rain today? %s", will_it_rain_from_json ? "Yes" : "No");
         }
         xEventGroupSetBits(global_event_group, IS_OUTSIDE_WEATHER_READING_DONE_BIT);

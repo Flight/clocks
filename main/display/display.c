@@ -53,7 +53,7 @@ static void check_segments()
   show_dashes();
 }
 
-static void change_brightness_smoothly(int new_brightness)
+static void change_brightness_smoothly(uint8_t new_brightness)
 {
   int8_t difference = new_brightness - current_brightness;
 
@@ -119,7 +119,7 @@ static void show_temperature(float temperature)
 void lcd_tm1637_task(void *pvParameter)
 {
   bool is_column_on = false;
-  u_int8_t seconds_time_shown = 0;
+  uint8_t seconds_time_shown = 0;
 
   lcd = tm1637_init(CLK_PIN, DTA_PIN);
 

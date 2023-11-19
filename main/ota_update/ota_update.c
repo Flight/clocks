@@ -18,6 +18,8 @@
 #define HASH_LEN 32
 #define OTA_BUF_SIZE 256
 
+#define NVS_STORAGE_NAMESPACE "ota"
+
 static const char *TAG = "OTA FW Update";
 
 extern const uint8_t server_cert_pem_start[] asm("_binary_cert_pem_start");
@@ -34,7 +36,7 @@ static void print_sha256(const uint8_t *image_hash, const char *label)
 {
   char hash_print[HASH_LEN * 2 + 1];
   hash_print[HASH_LEN * 2] = 0;
-  for (int i = 0; i < HASH_LEN; ++i)
+  for (uint8_t i = 0; i < HASH_LEN; ++i)
   {
     sprintf(&hash_print[i * 2], "%02x", image_hash[i]);
   }
@@ -46,7 +48,7 @@ static void check_current_firmware(void)
   ESP_LOGI(TAG, "Checking current firmware...");
   const esp_partition_t *running_partition = esp_ota_get_running_partition();
 
-  nvs_open("storage", NVS_READWRITE, &ota_storage_handle);
+  nvs_open(NVS_STORAGE_NAMESPACE, NVS_READWRITE, &ota_storage_handle);
 
   // Read the stored hash
   esp_err_t err = nvs_get_blob(ota_storage_handle, "firmware_hash", sha_256_stored, &stored_hash_size);
