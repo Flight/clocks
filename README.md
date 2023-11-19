@@ -79,19 +79,23 @@ Run the project using the **ESP-IDF Build, Flash and Monitor** button (number 6 
 
 4. Restart the ESP32. It will automatically start update process in 10 seconds after boot.
 
+## Next steps
+
+- ~~Replace the light sensor with the one which supports dead-zone to prevent blinking when the light is near the threshold.~~ (Done)
+- ~~Compare OTA versions to prevent cycle update.~~ (Done)
+- Replace the Legacy ADC lib with adc_oneshot.h as ESP-IDF suggests.
+- Show if it would be rainy on the display.
+- Web server with ESP_LOG outputs. The device already supports OTA Wi-Fi updates, so it will make it even easier.
+- Check updates from FTP server or Samba directly from the router.
+- Rewrite TM1637 lib as it isn't perfect.
+- Add the human presense sensor like LD2410 and turn off the screen if there is nobody in the bath to prevent display degradation. Maybe can add some other cool features with it.
+
 ## More photos
 
 ![Schematics](prebuild.jpeg)
 ![Installation](installation.jpeg)
 ![Done](done.jpeg)
-
-## Next steps
-
-- Replace the light sensor with the one which supports dead-zone to prevent blinking when the light is near the threshold.
-- As my bath have built-in bluetooth speakers, it would be nice to add some analog or internet radio streaming. It's not possible on the new models of ESP32 after the ESP32S. So it will limit the selection of the chips.
-- Add the human presense sensor like LD2410 and turn off the screen if there is nobody in the bath to prevent display degradation. Maybe can add some other cool features with it.
-- Web server with ESP_LOG outputs. The device already supports OTA Wi-Fi updates, so it will make it even easier.
-- Check OTA updates periodically instead of only on boot.
+![Photoresistor](photoresistor.png)
 
 ## Folder contents
 
