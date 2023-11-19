@@ -106,35 +106,129 @@ static void check_current_firmware(void)
   }
 }
 
-static void check_for_updates()
+static esp_err_t validate_image_header(esp_app_desc_t *new_app_info)
+{
+  if (new_app_info == NULL)
+  {
+    return ESP_ERR_INVALID_ARG;
+  }
+
+  const esp_partition_t *running = esp_ota_get_running_partition();
+  esp_app_desc_t running_app_info;
+  if (esp_ota_get_partition_description(running, &running_app_info) == ESP_OK)
+  {
+    ESP_LOGI(TAG, "Running firmware version: %s", running_app_info.version);
+  }
+
+  if (memcmp(new_app_info->version, running_app_info.version, sizeof(new_app_info->version)) == 0)
+  {
+    ESP_LOGW(TAG, "Current running version is the same as a new. We will not continue the update.");
+    return ESP_FAIL;
+  }
+  else
+  {
+    ESP_LOGI(TAG, "New firmware version: %s", new_app_info->version);
+  }
+
+  return ESP_OK;
+}
+
+static esp_err_t initialize_https_ota(esp_https_ota_handle_t *handle)
 {
   esp_http_client_config_t config = {
       .url = FIRMWARE_UPGRADE_URL,
       .cert_pem = (char *)server_cert_pem_start,
+      .keep_alive_enable = true,
   };
   esp_https_ota_config_t ota_config = {
       .http_config = &config,
   };
-  esp_err_t err = esp_https_ota(&ota_config);
 
+  return esp_https_ota_begin(&ota_config, handle);
+}
+
+static esp_err_t perform_ota_update(esp_https_ota_handle_t handle)
+{
+  esp_err_t err;
+  while (1)
+  {
+    err = esp_https_ota_perform(handle);
+    if (err != ESP_ERR_HTTPS_OTA_IN_PROGRESS)
+    {
+      break;
+    }
+    ESP_LOGD(TAG, "Image bytes read: %d", esp_https_ota_get_image_len_read(handle));
+  }
+  return err;
+}
+
+static void on_ota_failed(esp_https_ota_handle_t handle)
+{
+  if (handle)
+  {
+    esp_https_ota_abort(handle);
+  }
+  ESP_LOGE(TAG, "Upgrade failed");
+  nvs_close(ota_storage_handle);
+  vTaskDelete(NULL);
+}
+
+static void check_for_updates()
+{
+  esp_https_ota_handle_t https_ota_handle = NULL;
+  esp_err_t err = initialize_https_ota(&https_ota_handle);
   if (err != ESP_OK)
   {
-    ESP_LOGW(TAG, "OTA Update failed!");
+    ESP_LOGE(TAG, "Begin failed");
+    on_ota_failed(https_ota_handle);
+  }
+
+  esp_app_desc_t app_desc;
+  err = esp_https_ota_get_img_desc(https_ota_handle, &app_desc);
+  if (err != ESP_OK)
+  {
+    ESP_LOGE(TAG, "Image description read failed");
+    on_ota_failed(https_ota_handle);
+  }
+  err = validate_image_header(&app_desc);
+  if (err != ESP_OK)
+  {
     return;
   }
 
-  ESP_LOGI(TAG, "OTA Update successful!");
+  err = perform_ota_update(https_ota_handle);
+  if (esp_https_ota_is_complete_data_received(https_ota_handle) != true)
+  {
+    ESP_LOGE(TAG, "Complete data was not received.");
+    on_ota_failed(https_ota_handle);
+  }
 
-  // If update was successful, store the new hash
-  esp_partition_get_sha256(esp_ota_get_boot_partition(), sha_256_boot);
-  print_sha256(sha_256_boot, "New hash: ");
-  nvs_set_blob(ota_storage_handle, NVS_FIRMWARE_HASH_KEY, &sha_256_boot, HASH_LEN);
-  nvs_commit(ota_storage_handle);
-  nvs_close(ota_storage_handle);
-  ESP_LOGI(TAG, "Stored new firmware hash in NVS.");
-  ESP_LOGI(TAG, "Restarting to the new firmware...");
-  ESP_LOGW(TAG, "Please stop the web server to prevent the update loop!");
-  esp_restart();
+  if (err != ESP_OK)
+  {
+    ESP_LOGE(TAG, "Upgrade failed 0x%x", err);
+    on_ota_failed(https_ota_handle);
+  }
+
+  esp_err_t ota_finish_err = esp_https_ota_finish(https_ota_handle);
+  if (ota_finish_err == ESP_OK)
+  {
+    ESP_LOGI(TAG, "OTA Update successful!");
+
+    // If update was successful, store the new hash
+    esp_partition_get_sha256(esp_ota_get_boot_partition(), sha_256_boot);
+    print_sha256(sha_256_boot, "New hash: ");
+    nvs_set_blob(ota_storage_handle, NVS_FIRMWARE_HASH_KEY, &sha_256_boot, HASH_LEN);
+    nvs_commit(ota_storage_handle);
+    nvs_close(ota_storage_handle);
+    ESP_LOGI(TAG, "Stored new firmware hash in NVS.");
+    ESP_LOGI(TAG, "Restarting to the new firmware...");
+    esp_restart();
+  }
+  else
+  {
+    ESP_LOGE(TAG, "Upgrade failed 0x%x", ota_finish_err);
+    on_ota_failed(https_ota_handle);
+  }
 }
 
 void ota_update_task(void *pvParameter)

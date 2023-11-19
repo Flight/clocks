@@ -45,8 +45,8 @@ void app_main(void)
 
   xTaskCreatePinnedToCore(&led_task, "LED", configMINIMAL_STACK_SIZE * 2, NULL, 1, NULL, 1);
   xTaskCreatePinnedToCore(&wifi_task, "Wi-Fi Keeper", configMINIMAL_STACK_SIZE * 3, NULL, 1, NULL, 1);
-  // xTaskCreatePinnedToCore(&light_sensor_task, "Light Sensor", configMINIMAL_STACK_SIZE * 2, NULL, 1, NULL, 1);
-  xTaskCreatePinnedToCore(&light_sensor_adc_task, "Light Sensor ADC", configMINIMAL_STACK_SIZE * 2, NULL, 1, NULL, 1);
+  xTaskCreatePinnedToCore(&light_sensor_task, "Light Sensor", configMINIMAL_STACK_SIZE * 2, NULL, 1, NULL, 1);
+  // xTaskCreatePinnedToCore(&light_sensor_adc_task, "Light Sensor ADC", configMINIMAL_STACK_SIZE * 2, NULL, 1, NULL, 1);
   xTaskCreatePinnedToCore(&external_timer_task, "External Timer", configMINIMAL_STACK_SIZE * 2, NULL, 1, NULL, 1);
   xTaskCreatePinnedToCore(&ntp_task, "NTP", configMINIMAL_STACK_SIZE * 2, NULL, 1, NULL, 1);
   xTaskCreatePinnedToCore(&lcd_tm1637_task, "LCD TM1637", configMINIMAL_STACK_SIZE * 2, NULL, 1, NULL, 1);

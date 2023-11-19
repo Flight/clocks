@@ -61,19 +61,23 @@ Run the project using the **ESP-IDF Build, Flash and Monitor** button (number 6 
 
 ### Run OTA Update
 
-1. Run OTA web-server from `ota_server` folder. I'm using this [http-server](https://github.com/http-party/http-server) as **OpenSSL one didn't work properly** and was hanging during download until you don't stop it manually.
+1. Create new GIT Tag
+
+   `git tag -a v0.0.1 -m "new release"`
+
+   `git push origin v0.0.1` (optional)
+
+2. Run OTA web-server from `ota_server` folder. I'm using this [http-server](https://github.com/http-party/http-server) as **OpenSSL one didn't work properly** and was hanging during download until you don't stop it manually.
 
    `cd ota_server`
 
    `sudo npx http-server -S -C ../main/ota_update/cert.pem -p 8070 -c-1`
 
-2. Drop the file `clocks.bin` to `ota_server` folder or setup the build to generate the output file in that folder.
+3. Drop the file `clocks.bin` to `ota_server` folder or setup the build to generate the output file in that folder.
 
    You can find the `main.bin` in the `build` folder after you built it. Just copy and rename it to `clocks.bin`.
 
-3. Restart the ESP32. It will automatically start update process in 10 seconds after boot.
-
-4. **Shut down the web server** after update as it will **loop the download process** if the clocks will be manually rebooted again. The version comparison is not implemented yet.
+4. Restart the ESP32. It will automatically start update process in 10 seconds after boot.
 
 ## More photos
 
