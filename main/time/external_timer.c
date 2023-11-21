@@ -34,10 +34,11 @@ static void save_system_time_to_clocks()
   if (ds3231_set_time(&timer, &time_from_ntp) != ESP_OK)
   {
     ESP_LOGE(TAG, "Could not save time to the clocks. Module is not connected or the CR2032 battery is low.");
-    return;
   }
-
-  xEventGroupClearBits(global_event_group, IS_TIME_FROM_NPT_UP_TO_DATE_BIT);
+  else
+  {
+    ESP_LOGI(TAG, "Time saved to the clocks: %s", strftime_buf);
+  }
 }
 
 static void copy_time_from_clocks_to_sytem_time()
@@ -72,6 +73,7 @@ void external_timer_task(void *pvParameters)
     {
       ESP_LOGI(TAG, "Saving NTP time to clocks");
       save_system_time_to_clocks();
+      xEventGroupClearBits(global_event_group, IS_TIME_FROM_NPT_UP_TO_DATE_BIT);
     }
     else
     {

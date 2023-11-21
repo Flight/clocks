@@ -5,7 +5,7 @@
 #include <string.h>
 
 #include "sdkconfig.h"
-#include "sht3x.h"
+#include "bmp280.h"
 #include "global_event_group.h"
 
 #include "temperature_from_sensor.h"
@@ -13,38 +13,41 @@
 #define PORT 0
 #define ADDR CONFIG_SHT3X_ADDR
 
-static const char *TAG = "SHT3X Sensor";
+static const char *TAG = "BMP280 Sensor";
 
 static const gpio_num_t SDA_PIN = CONFIG_SDA_PIN;
 static const gpio_num_t SCL_PIN = CONFIG_SCL_PIN;
 
 static const uint8_t REFRESH_INTERVAL_MINS = 1;
 
-void temperature_from_SHT3X_sensor_task(void *pvParameter)
+void temperature_from_BMP280_sensor_task(void *pvParameter)
 {
+  float pressure;
   float temperature;
   float humidity;
 
-  sht3x_t sensor;
-  memset(&sensor, 0, sizeof(sht3x_t));
-
   ESP_LOGI(TAG, "Init start");
-  sht3x_init_desc(&sensor, ADDR, PORT, SDA_PIN, SCL_PIN);
-  sht3x_init(&sensor);
-  uint8_t measurement_duration = sht3x_get_measurement_duration(SHT3X_HIGH);
+  bmp280_params_t params;
+  bmp280_init_default_params(&params);
+  bmp280_t sensor;
+  memset(&sensor, 0, sizeof(bmp280_t));
+  bmp280_init_desc(&sensor, BMP280_I2C_ADDRESS_0, 0, SDA_PIN, SCL_PIN);
+  bmp280_init(&sensor, &params);
+
+  bool bme280p = sensor.id == BME280_CHIP_ID;
+  ESP_LOGI(TAG, "BMP280: found %s", bme280p ? "BME280" : "BMP280");
   ESP_LOGI(TAG, "Init end");
 
   while (true)
   {
     xEventGroupClearBits(global_event_group, IS_INSIDE_TEMPERATURE_READING_DONE_BIT);
-
-    sht3x_start_measurement(&sensor, SHT3X_SINGLE_SHOT, SHT3X_HIGH);
-
-    vTaskDelay(measurement_duration);
-
-    if (sht3x_get_results(&sensor, &temperature, &humidity) == ESP_OK)
+    if (bmp280_read_float(&sensor, &temperature, &pressure, &humidity) == ESP_OK)
     {
-      ESP_LOGI(TAG, "Temperature: %.2f °C, %.2f %%\n", temperature, humidity);
+      ESP_LOGI(TAG, "Pressure: %.2f Pa, Temperature: %.2f C", pressure, temperature);
+      if (bme280p)
+      {
+        ESP_LOGI(TAG, "Humidity: %.2f\n", humidity);
+      }
       global_inside_temperature = temperature;
       xEventGroupSetBits(global_event_group, IS_INSIDE_TEMPERATURE_READING_DONE_BIT);
       vTaskDelay(1000 * 60 * REFRESH_INTERVAL_MINS / portTICK_PERIOD_MS);

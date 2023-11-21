@@ -73,7 +73,7 @@ static void print_tasks_list()
     qsort(task_status_array, tasks_array_length, sizeof(TaskStatus_t), compare_tasks_by_runtime);
 
     // Print the header.
-    ESP_LOGI(TAG, "%-20s %-9s %4s %12s %5s %10s %7s",
+    ESP_LOGI(TAG, "%-25s %-9s %4s %12s %5s %10s %7s",
              "Task Name",
              "State",
              "Prio",
@@ -85,7 +85,7 @@ static void print_tasks_list()
     // Display the information about each task.
     for (task_index = 0; task_index < tasks_array_length; task_index++)
     {
-      ESP_LOGI(TAG, "%-20s %-9s %4u %12lu %5u %10lu %6lu%%",
+      ESP_LOGI(TAG, "%-25s %-9s %4u %12lu %5u %10lu %6lu%%",
                task_status_array[task_index].pcTaskName,
                TASK_STATES[task_status_array[task_index].eCurrentState],
                task_status_array[task_index].uxCurrentPriority,
