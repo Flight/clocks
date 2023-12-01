@@ -37,6 +37,14 @@ menu "CLOCKS GPIO SETTINGS"
       GPIO number (IOxx) for the IC2 SCL pin.
       Check the pins schematics of you board to find it.
 
+  config ONEWIRE_GPIO
+    int "OneWire protocol GPIO number"
+    range ENV_GPIO_RANGE_MIN ENV_GPIO_RANGE_MAX
+    default 9
+    help
+      GPIO number (IOxx) for the OneWire protocol.
+      Can be any GPIO, which can receive digital input.
+
   config TM1637_CLK_PIN
     int "TM1637 LCD screen CLK GPIO number"
     range 0 ENV_GPIO_RANGE_MAX

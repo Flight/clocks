@@ -18,7 +18,7 @@ static void read_and_save()
   xEventGroupSetBits(global_event_group, IS_LIGHT_SENSOR_READING_DONE_BIT);
 }
 
-void light_sensor_task(void *pvParameter)
+void light_sensor_hw072_task(void *pvParameter)
 {
   ESP_LOGI(TAG, "Init start");
   gpio_reset_pin(LIGHT_SENSOR_PIN);
