@@ -9,7 +9,7 @@
 
 #include "weather_from_api.h"
 
-float global_outside_temperature;
+float global_outside_temperature = TEMPERATURE_ERROR_CODE;
 int8_t global_outside_will_it_rain;
 
 static const char *TAG = "Weather API";
@@ -26,7 +26,6 @@ extern const char api_weatherapi_com_pem_start[] asm("_binary_api_weatherapi_com
 extern const char api_weatherapi_com_pem_end[] asm("_binary_api_weatherapi_com_pem_end");
 
 #define MAX_HTTP_OUTPUT_BUFFER 2048
-#define TEMPERATURE_ERROR_CODE -1000
 #define WILL_IT_RAIN_ERROR_CODE -1
 
 static uint8_t retry_count = 0;

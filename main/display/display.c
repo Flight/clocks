@@ -19,9 +19,10 @@ static const char *TAG = "Display";
 static const gpio_num_t CLK_PIN = CONFIG_TM1637_CLK_PIN;
 static const gpio_num_t DTA_PIN = CONFIG_TM1637_DIO_PIN;
 
-static const uint8_t MIN_BRIGHTNESS = 1;
+static const uint8_t MIN_BRIGHTNESS = 0;
+static const uint8_t MED_BRIGHTNESS = 2;
 static const uint8_t MAX_BRIGHTNESS = 7;
-static uint8_t current_brightness = 1;
+static uint8_t current_brightness = 0;
 
 static const uint8_t DIGITS_AMOUNT = 4;
 static const uint8_t SECONDS_UNTIL_TEMPERATURE_SHOWN = 20;
@@ -151,19 +152,23 @@ void lcd_tm1637_task(void *pvParameter)
 
     if (uxBits & IS_LIGHT_SENSOR_READING_DONE_BIT)
     {
-      if (global_is_light_on)
+      switch (global_light_level_index)
       {
-        change_brightness_smoothly(MAX_BRIGHTNESS);
-      }
-      else
-      {
+      case LIGHT_LEVEL_LOW:
         change_brightness_smoothly(MIN_BRIGHTNESS);
+        break;
+      case LIGHT_LEVEL_MEDIUM:
+        change_brightness_smoothly(MED_BRIGHTNESS);
+        break;
+      case LIGHT_LEVEL_HIGH:
+        change_brightness_smoothly(MAX_BRIGHTNESS);
+        break;
       }
     }
 
     if (seconds_time_shown > SECONDS_UNTIL_TEMPERATURE_SHOWN)
     {
-      if (uxBits & IS_INSIDE_TEMPERATURE_READING_DONE_BIT && global_inside_temperature)
+      if (uxBits & IS_INSIDE_TEMPERATURE_READING_DONE_BIT && global_inside_temperature != -1000)
       {
         show_temperature(global_inside_temperature);
         vTaskDelay(SECONDS_TO_SHOW_TEMPERATURE * 1000 / portTICK_PERIOD_MS);
