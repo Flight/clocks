@@ -21,7 +21,7 @@ The project started from the dead section of the built-in clocks in my bath mirr
 - _Optional:_ **DS3231** external timer. Saving time to the separate precise clocks.
 - _Optional:_ **SHT3X** environment sensor. Measuring temperature (and optionally humidity).
 - _Optional:_ **BMP280/BME280** environment sensor. Measuring temperature (and optionally humidity).
-- _Optional:_ **DS1820** temperature sensor. Measuring temperature (and optionally humidity).
+- _Optional:_ **DS1820** temperature sensor. Measuring temperature.
 - _Optional:_ **Temperature from API** over Wi-Fi and HTTPS. [api.weatherapi.com](https://www.weatherapi.com)
 - _Optional:_ **OTA Updates** over Wi-Fi and HTTPS.
 - _Optional:_ **GL5516** Photo resistor. Switching between full and minimal brightness using ADC.

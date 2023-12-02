@@ -12,8 +12,8 @@
 static const char *TAG = "Light Sensor ADC Oneshot";
 
 static const gpio_num_t LIGHT_SENSOR_PIN = CONFIG_LIGHT_SENSOR_PIN;
-static const uint16_t ADC_SWITCH_VALUE = 1400; // 3550 for MH light sensor breakout board
-static const uint16_t ADC_DRIFTING_TOLERANCE = 100;
+static const uint16_t ADC_SWITCH_VALUE = 800; // 3550 for MH light sensor breakout board
+static const uint16_t ADC_DRIFTING_TOLERANCE = 50;
 
 void light_sensor_adc_oneshot_task(void *pvParameter)
 {
