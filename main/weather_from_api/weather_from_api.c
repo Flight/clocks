@@ -33,6 +33,28 @@ static uint8_t retry_count = 0;
 static float temperature_from_json = TEMPERATURE_ERROR_CODE;
 static int8_t will_it_rain_from_json = WILL_IT_RAIN_ERROR_CODE;
 
+static void parse_temperature(cJSON *current)
+{
+  cJSON *temperature_json = cJSON_GetObjectItem(current, "temp_c");
+  if (temperature_json && cJSON_IsNumber(temperature_json))
+  {
+    temperature_from_json = temperature_json->valuedouble;
+  }
+}
+
+static void parse_rain_forecast(cJSON *forecast)
+{
+  cJSON *forecastday = cJSON_GetObjectItem(forecast, "forecastday");
+  cJSON *firstDay = forecastday ? cJSON_GetArrayItem(forecastday, 0) : NULL;
+  cJSON *day = firstDay ? cJSON_GetObjectItem(firstDay, "day") : NULL;
+  cJSON *will_it_rain = day ? cJSON_GetObjectItem(day, "daily_will_it_rain") : NULL;
+
+  if (will_it_rain && cJSON_IsNumber(will_it_rain))
+  {
+    will_it_rain_from_json = will_it_rain->valueint;
+  }
+}
+
 static void get_data_from_json(char *json_string)
 {
   temperature_from_json = TEMPERATURE_ERROR_CODE;
@@ -41,43 +63,22 @@ static void get_data_from_json(char *json_string)
   ESP_LOGI(TAG, "JSON string: %s", json_string);
 
   cJSON *response_json = cJSON_Parse(json_string);
-  if (response_json == NULL)
+  if (!response_json)
   {
     ESP_LOGE(TAG, "Failed to parse JSON response");
     return;
   }
 
   cJSON *current = cJSON_GetObjectItem(response_json, "current");
-  if (current != NULL)
+  if (current)
   {
-    cJSON *temperature_json = cJSON_GetObjectItem(current, "temp_c");
-    if (temperature_json != NULL && cJSON_IsNumber(temperature_json))
-    {
-      temperature_from_json = temperature_json->valuedouble;
-    }
+    parse_temperature(current);
   }
 
-  // Extracting will_it_rain from JSON
   cJSON *forecast = cJSON_GetObjectItem(response_json, "forecast");
-  if (forecast != NULL)
+  if (forecast)
   {
-    cJSON *forecastday = cJSON_GetObjectItem(forecast, "forecastday");
-    if (forecastday != NULL)
-    {
-      cJSON *firstDay = cJSON_GetArrayItem(forecastday, 0);
-      if (firstDay != NULL)
-      {
-        cJSON *day = cJSON_GetObjectItem(firstDay, "day");
-        if (day != NULL)
-        {
-          cJSON *will_it_rain = cJSON_GetObjectItem(day, "daily_will_it_rain");
-          if (will_it_rain != NULL && cJSON_IsNumber(will_it_rain))
-          {
-            will_it_rain_from_json = will_it_rain->valueint;
-          }
-        }
-      }
-    }
+    parse_rain_forecast(forecast);
   }
 
   cJSON_Delete(response_json);
@@ -205,6 +206,20 @@ static esp_err_t _http_event_handler(esp_http_client_event_t *evt)
   return ESP_OK;
 }
 
+void cleanup_and_retry(esp_http_client_handle_t client)
+{
+  retry_count++;
+  esp_http_client_cleanup(client);
+  vTaskDelay(1000 * RETRY_INTERVAL_SECS / portTICK_PERIOD_MS);
+}
+
+void cleanup_and_wait(esp_http_client_handle_t client)
+{
+  retry_count = 0;
+  esp_http_client_cleanup(client);
+  vTaskDelay(1000 * 60 * REFRESH_INTERVAL_MINS / portTICK_PERIOD_MS);
+}
+
 void weather_from_api_task(void *pvParameter)
 {
   char full_url[256];
@@ -233,18 +248,15 @@ void weather_from_api_task(void *pvParameter)
       if (temperature_from_json == TEMPERATURE_ERROR_CODE)
       {
         ESP_LOGW(TAG, "Failed to get the weather (attempt %d of %d)", retry_count + 1, MAXIMUM_RETRY);
-        vTaskDelay(1000 * RETRY_INTERVAL_SECS / portTICK_PERIOD_MS);
-        retry_count++;
+        if (retry_count + 1 == MAXIMUM_RETRY)
+        {
+          ESP_LOGE(TAG, "Can't fetch the weather. Next retry in %d minutes.", REFRESH_INTERVAL_MINS);
+        }
+        cleanup_and_retry(client);
         continue;
       }
     }
-    else
-    {
-      ESP_LOGE(TAG, "Can't fetch the weather. Next retry in %d minutes.", REFRESH_INTERVAL_MINS);
-    }
 
-    esp_http_client_cleanup(client);
-    retry_count = 0;
-    vTaskDelay(1000 * 60 * REFRESH_INTERVAL_MINS / portTICK_PERIOD_MS);
+    cleanup_and_wait(client);
   }
 }

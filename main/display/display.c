@@ -169,7 +169,7 @@ void lcd_tm1637_task(void *pvParameter)
         vTaskDelay(SECONDS_TO_SHOW_TEMPERATURE * 1000 / portTICK_PERIOD_MS);
       }
 
-      if (uxBits & IS_OUTSIDE_WEATHER_READING_DONE_BIT && global_outside_temperature)
+      if (uxBits & IS_OUTSIDE_WEATHER_READING_DONE_BIT && global_outside_temperature != -1000)
       {
         show_temperature(global_outside_temperature);
         vTaskDelay(SECONDS_TO_SHOW_TEMPERATURE * 1000 / portTICK_PERIOD_MS);
