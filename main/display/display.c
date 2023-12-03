@@ -26,8 +26,14 @@ static uint8_t current_brightness = 0;
 
 static const uint8_t DIGITS_AMOUNT = 4;
 static const uint8_t SECONDS_UNTIL_TEMPERATURE_SHOWN = 20;
-static const uint8_t SECONDS_TO_SHOW_TEMPERATURE = 5;
+static const uint8_t SECONDS_TO_SHOW_EACH_TEMPERATURE = 5;
 static const uint8_t CIRCLE_LOOP_LENGTH = 32;
+
+static uint8_t current_hours = 0;
+static uint8_t current_minutes = 0;
+static float current_temperature = 0.0;
+static bool current_is_column_on = false;
+static bool display_temperature = false;
 
 static tm1637_led_t *lcd;
 
@@ -54,29 +60,13 @@ static void check_segments()
   show_dashes();
 }
 
-static void change_brightness_smoothly(uint8_t new_brightness)
-{
-  int8_t difference = new_brightness - current_brightness;
-
-  for (uint8_t brightness_step = 0; brightness_step < abs(difference); brightness_step++)
-  {
-    show_dashes();
-
-    if (difference > 0)
-    {
-      current_brightness++;
-    }
-    else
-    {
-      current_brightness--;
-    }
-    tm1637_set_brightness(lcd, current_brightness);
-    vTaskDelay(300 / portTICK_PERIOD_MS);
-  }
-}
-
 static void show_time(uint8_t hours, uint8_t minutes, bool is_column_on)
 {
+  current_hours = hours;
+  current_minutes = minutes;
+  current_is_column_on = is_column_on;
+  display_temperature = false;
+
   tm1637_set_segment_number(lcd, 0, hours / 10, false);
   tm1637_set_segment_number(lcd, 1, hours % 10, is_column_on);
   tm1637_set_segment_number(lcd, 2, minutes / 10, false);
@@ -85,6 +75,9 @@ static void show_time(uint8_t hours, uint8_t minutes, bool is_column_on)
 
 static void show_temperature(float temperature)
 {
+  current_temperature = temperature;
+  display_temperature = true;
+
   int32_t rounded_temperature = (int32_t)roundf(temperature);
   char temperature_string[5];
 
@@ -113,18 +106,73 @@ static void show_temperature(float temperature)
     tm1637_set_segment_number(lcd, current_digit_index, temperature_string[index] - '0', false);
   }
 
-  // degree sign
+  // Degree sign
   tm1637_set_segment_raw(lcd, 3, 0xe3);
+}
+
+static void change_brightness_smoothly(uint8_t new_brightness)
+{
+  int8_t difference = new_brightness - current_brightness;
+
+  for (uint8_t brightness_step = 0; brightness_step < abs(difference); brightness_step++)
+  {
+    if (difference > 0)
+    {
+      current_brightness++;
+    }
+    else
+    {
+      current_brightness--;
+    }
+    tm1637_set_brightness(lcd, current_brightness);
+
+    if (display_temperature)
+    {
+      show_temperature(current_temperature);
+    }
+    else
+    {
+      show_time(current_hours, current_minutes, current_is_column_on);
+    }
+    vTaskDelay(300 / portTICK_PERIOD_MS);
+  }
+}
+
+void check_brightness()
+{
+  uint8_t target_brightness = current_brightness;
+
+  switch (global_light_level_index)
+  {
+  case LIGHT_LEVEL_LOW:
+    target_brightness = MIN_BRIGHTNESS;
+    break;
+  case LIGHT_LEVEL_MEDIUM:
+    target_brightness = MED_BRIGHTNESS;
+    break;
+  case LIGHT_LEVEL_HIGH:
+    target_brightness = MAX_BRIGHTNESS;
+    break;
+  }
+
+  if (target_brightness != current_brightness)
+  {
+    change_brightness_smoothly(target_brightness);
+  }
 }
 
 void lcd_tm1637_task(void *pvParameter)
 {
   bool is_column_on = false;
   uint8_t seconds_time_shown = 0;
+  uint8_t seconds_temperature_shown = 0;
+  time_t now;
+  char strftime_buf[64];
+  struct tm timeinfo;
 
   lcd = tm1637_init(CLK_PIN, DTA_PIN);
 
-  tm1637_set_brightness(lcd, current_brightness);
+  tm1637_set_brightness(lcd, MIN_BRIGHTNESS);
   ESP_LOGI(TAG, "Init done");
 
   check_segments();
@@ -137,11 +185,6 @@ void lcd_tm1637_task(void *pvParameter)
   {
     EventBits_t uxBits = xEventGroupGetBits(global_event_group);
 
-    time_t now;
-    char strftime_buf[64];
-    struct tm timeinfo;
-    seconds_time_shown++;
-
     time(&now);
 
     localtime_r(&now, &timeinfo);
@@ -150,42 +193,39 @@ void lcd_tm1637_task(void *pvParameter)
     uint8_t hours = timeinfo.tm_hour;
     uint8_t minutes = timeinfo.tm_min;
 
-    if (uxBits & IS_LIGHT_SENSOR_READING_DONE_BIT)
+    if ((display_temperature || seconds_time_shown > SECONDS_UNTIL_TEMPERATURE_SHOWN) && seconds_temperature_shown < SECONDS_TO_SHOW_EACH_TEMPERATURE * 2)
     {
-      switch (global_light_level_index)
-      {
-      case LIGHT_LEVEL_LOW:
-        change_brightness_smoothly(MIN_BRIGHTNESS);
-        break;
-      case LIGHT_LEVEL_MEDIUM:
-        change_brightness_smoothly(MED_BRIGHTNESS);
-        break;
-      case LIGHT_LEVEL_HIGH:
-        change_brightness_smoothly(MAX_BRIGHTNESS);
-        break;
-      }
-    }
-
-    if (seconds_time_shown > SECONDS_UNTIL_TEMPERATURE_SHOWN)
-    {
-      if (uxBits & IS_INSIDE_TEMPERATURE_READING_DONE_BIT && global_inside_temperature != -1000)
+      display_temperature = true;
+      if (uxBits & IS_INSIDE_TEMPERATURE_READING_DONE_BIT && global_inside_temperature != -1000 && seconds_temperature_shown < SECONDS_TO_SHOW_EACH_TEMPERATURE)
       {
         show_temperature(global_inside_temperature);
-        vTaskDelay(SECONDS_TO_SHOW_TEMPERATURE * 1000 / portTICK_PERIOD_MS);
       }
-
-      if (uxBits & IS_OUTSIDE_WEATHER_READING_DONE_BIT && global_outside_temperature != -1000)
+      else if (uxBits & IS_OUTSIDE_WEATHER_READING_DONE_BIT && global_outside_temperature != -1000 && seconds_temperature_shown < SECONDS_TO_SHOW_EACH_TEMPERATURE * 2)
       {
         show_temperature(global_outside_temperature);
-        vTaskDelay(SECONDS_TO_SHOW_TEMPERATURE * 1000 / portTICK_PERIOD_MS);
       }
 
+      seconds_temperature_shown++;
       seconds_time_shown = 0;
+
+      if (uxBits & IS_LIGHT_SENSOR_READING_DONE_BIT)
+      {
+        check_brightness();
+      }
+      vTaskDelay(1000 / portTICK_PERIOD_MS);
       continue;
     }
 
+    display_temperature = false;
+    seconds_time_shown++;
+    seconds_temperature_shown = 0;
     show_time(hours, minutes, is_column_on);
     is_column_on = !is_column_on;
+
+    if (uxBits & IS_LIGHT_SENSOR_READING_DONE_BIT)
+    {
+      check_brightness();
+    }
     vTaskDelay(1000 / portTICK_PERIOD_MS);
   }
 }
