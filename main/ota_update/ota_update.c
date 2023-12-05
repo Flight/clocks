@@ -168,7 +168,6 @@ static void on_ota_failed(esp_https_ota_handle_t handle)
   {
     esp_https_ota_abort(handle);
   }
-  ESP_LOGE(TAG, "Upgrade failed");
   nvs_close(ota_storage_handle);
   vTaskDelete(NULL);
 }
@@ -179,8 +178,9 @@ static void check_for_updates()
   esp_err_t err = initialize_https_ota(&https_ota_handle);
   if (err != ESP_OK)
   {
-    ESP_LOGE(TAG, "Begin failed");
+    ESP_LOGW(TAG, "HTTPS Init failed");
     on_ota_failed(https_ota_handle);
+    return;
   }
 
   esp_app_desc_t app_desc;
@@ -189,6 +189,7 @@ static void check_for_updates()
   {
     ESP_LOGE(TAG, "Image description read failed");
     on_ota_failed(https_ota_handle);
+    return;
   }
   err = validate_image_header(&app_desc);
   if (err != ESP_OK)
@@ -201,12 +202,14 @@ static void check_for_updates()
   {
     ESP_LOGE(TAG, "Complete data was not received.");
     on_ota_failed(https_ota_handle);
+    return;
   }
 
   if (err != ESP_OK)
   {
     ESP_LOGE(TAG, "Upgrade failed 0x%x", err);
     on_ota_failed(https_ota_handle);
+    return;
   }
 
   esp_err_t ota_finish_err = esp_https_ota_finish(https_ota_handle);
