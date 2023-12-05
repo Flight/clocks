@@ -30,7 +30,14 @@ void temperature_from_SHT3X_sensor_task(void *pvParameter)
 
   ESP_LOGI(TAG, "Init start");
   sht3x_init_desc(&sensor, ADDR, PORT, SDA_PIN, SCL_PIN);
-  sht3x_init(&sensor);
+  esp_err_t err = sht3x_init(&sensor);
+
+  if (err != ESP_OK)
+  {
+    ESP_LOGW(TAG, "Sensor not found, cleaning the task");
+    vTaskDelete(NULL);
+  }
+
   uint8_t measurement_duration = sht3x_get_measurement_duration(SHT3X_HIGH);
   ESP_LOGI(TAG, "Init end");
 

@@ -46,6 +46,7 @@ void temperature_from_DS1820_sensor_task(void *pvParameter)
 
   if (sensor_address == 0)
   {
+    ESP_LOGW(TAG, "Sensor not found, cleaning the task");
     vTaskDelete(NULL);
   }
 

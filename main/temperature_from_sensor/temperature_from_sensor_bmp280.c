@@ -32,7 +32,13 @@ void temperature_from_BMP280_sensor_task(void *pvParameter)
   bmp280_t sensor;
   memset(&sensor, 0, sizeof(bmp280_t));
   bmp280_init_desc(&sensor, BMP280_I2C_ADDRESS_0, 0, SDA_PIN, SCL_PIN);
-  bmp280_init(&sensor, &params);
+  esp_err_t err = bmp280_init(&sensor, &params);
+
+  if (err != ESP_OK)
+  {
+    ESP_LOGW(TAG, "Sensor not found, cleaning the task");
+    vTaskDelete(NULL);
+  }
 
   bool bme280p = sensor.id == BME280_CHIP_ID;
   ESP_LOGI(TAG, "BMP280: found %s", bme280p ? "BME280" : "BMP280");
