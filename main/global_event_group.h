@@ -27,4 +27,6 @@ extern float global_inside_temperature;    // -1000 - error
 extern float global_outside_temperature;   // -1000 - error
 extern int8_t global_outside_will_it_rain; // -1 - error, 0 - no, 1 - yes
 
+extern char *global_running_firmware_version;
+
 #endif // GLOBAL_EVENT_GROUP_H

@@ -17,6 +17,8 @@
 #define HASH_LEN 32
 #define OTA_BUF_SIZE 256
 
+char *global_running_firmware_version = "Pending";
+
 static const char *TAG = "OTA FW Update";
 
 static const char *NVS_STORAGE_NAMESPACE = "system_info";
@@ -26,6 +28,9 @@ extern const uint8_t server_cert_pem_start[] asm("_binary_cert_pem_start");
 extern const uint8_t server_cert_pem_end[] asm("_binary_cert_pem_end");
 
 static const uint8_t TIME_BEFORE_UPDATE_CHECK_SECS = 10;
+
+static esp_partition_t *running_partition;
+static esp_app_desc_t running_app_info;
 
 static size_t stored_hash_size = HASH_LEN;
 static uint8_t sha_256_current[HASH_LEN] = {0};
@@ -47,11 +52,9 @@ static void print_sha256(const uint8_t *image_hash, const char *label)
 static void check_current_firmware(void)
 {
   ESP_LOGI(TAG, "Checking current firmware...");
-  const esp_partition_t *running_partition = esp_ota_get_running_partition();
-
-  nvs_open(NVS_STORAGE_NAMESPACE, NVS_READWRITE, &ota_storage_handle);
 
   // Read the stored hash
+  nvs_open(NVS_STORAGE_NAMESPACE, NVS_READWRITE, &ota_storage_handle);
   esp_err_t err = nvs_get_blob(ota_storage_handle, NVS_FIRMWARE_HASH_KEY, &sha_256_stored, &stored_hash_size);
   if (err != ESP_OK && err != ESP_ERR_NVS_NOT_FOUND)
   {
@@ -59,11 +62,8 @@ static void check_current_firmware(void)
     return;
   }
 
-  print_sha256(sha_256_stored, "Stored hash: ");
-
-  // Get the SHA-256 of the current firmware
-  esp_partition_get_sha256(running_partition, sha_256_current);
-  print_sha256(sha_256_current, "Current hash: ");
+  print_sha256(sha_256_stored, "Stored firmware hash: ");
+  print_sha256(sha_256_current, "Current firmware hash: ");
 
   // Check if the running partition is the factory partition
   bool is_factory_partition = running_partition->type == ESP_PARTITION_TYPE_APP &&
@@ -113,20 +113,14 @@ static esp_err_t validate_image_header(esp_app_desc_t *new_app_info)
     return ESP_ERR_INVALID_ARG;
   }
 
-  const esp_partition_t *running = esp_ota_get_running_partition();
-  esp_app_desc_t running_app_info;
-  if (esp_ota_get_partition_description(running, &running_app_info) == ESP_OK)
+  if (memcmp(new_app_info->version, global_running_firmware_version, sizeof(new_app_info->version)) == 0)
   {
-    ESP_LOGI(TAG, "Running firmware version: %s", running_app_info.version);
-  }
-
-  if (memcmp(new_app_info->version, running_app_info.version, sizeof(new_app_info->version)) == 0)
-  {
-    ESP_LOGW(TAG, "Current running version is the same as a new. We will not continue the update.");
+    ESP_LOGW(TAG, "Current running version is the same as a new. We will not continue the update. (%s)", global_running_firmware_version);
     return ESP_FAIL;
   }
   else
   {
+    ESP_LOGI(TAG, "Running firmware version: %s", global_running_firmware_version);
     ESP_LOGI(TAG, "New firmware version: %s", new_app_info->version);
   }
 
@@ -234,8 +228,26 @@ static void check_for_updates()
   }
 }
 
+void get_running_firmware_info()
+{
+  running_partition = esp_ota_get_running_partition();
+  esp_err_t err = esp_partition_get_sha256(running_partition, sha_256_current);
+  if (err != ESP_OK)
+  {
+    vTaskDelete(NULL);
+  }
+
+  if (esp_ota_get_partition_description(running_partition, &running_app_info) == ESP_OK)
+  {
+    global_running_firmware_version = running_app_info.version;
+    ESP_LOGI(TAG, "Running firmware version: %s", global_running_firmware_version);
+  }
+}
+
 void ota_update_task(void *pvParameter)
 {
+  get_running_firmware_info();
+
   ESP_LOGI(TAG, "Waiting for Wi-Fi");
   xEventGroupWaitBits(global_event_group, IS_WIFI_CONNECTED_BIT, pdFALSE, pdTRUE, portMAX_DELAY);
 
