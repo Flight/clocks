@@ -21,13 +21,28 @@ static esp_err_t send_web_page(httpd_req_t *req)
   size_t response_data_size = index_html_size + 500;
   char *response_data = malloc(response_data_size);
 
+  char inside_temperature_string[20];
+  if (global_inside_temperature == TEMPERATURE_ERROR_CODE)
+  {
+    strcpy(inside_temperature_string, "N/A");
+  }
+  else
+  {
+    sprintf(inside_temperature_string, "%.2f°C", global_inside_temperature);
+  }
+
+  char outside_temperature_string[20];
+  if (global_outside_temperature == TEMPERATURE_ERROR_CODE)
+  {
+    strcpy(outside_temperature_string, "N/A");
+  }
+  else
+  {
+    sprintf(outside_temperature_string, "%.2f°C", global_outside_temperature);
+  }
+
   // Assuming html_page has format specifiers for the temperatures and light level
-  snprintf(response_data, response_data_size, html_page,
-           global_inside_temperature,
-           global_outside_temperature,
-           global_light_level_index + 1,
-           LIGHT_LEVELS_AMOUNT,
-           global_running_firmware_version);
+  snprintf(response_data, response_data_size, html_page, inside_temperature_string, outside_temperature_string, global_light_level_index + 1, LIGHT_LEVELS_AMOUNT, global_running_firmware_version);
 
   esp_err_t response = httpd_resp_send(req, response_data, HTTPD_RESP_USE_STRLEN);
 
@@ -65,11 +80,6 @@ void webserver_task(void *pvParameter)
 {
   ESP_LOGI(TAG, "Waiting for Wi-Fi");
   xEventGroupWaitBits(global_event_group, IS_WIFI_CONNECTED_BIT, pdFALSE, pdTRUE, portMAX_DELAY);
-
-  // ESP_LOGI(TAG, "Waiting for inside temperature");
-  // xEventGroupWaitBits(global_event_group, IS_INSIDE_TEMPERATURE_READING_DONE_BIT, pdFALSE, pdTRUE, portMAX_DELAY);
-  // ESP_LOGI(TAG, "Waiting for outside temperature");
-  // xEventGroupWaitBits(global_event_group, IS_OUTSIDE_WEATHER_READING_DONE_BIT, pdFALSE, pdTRUE, portMAX_DELAY);
 
   ESP_LOGI(TAG, "Init start");
   httpd_handle_t server = start_webserver();
