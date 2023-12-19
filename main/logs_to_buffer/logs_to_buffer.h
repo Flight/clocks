@@ -1,0 +1,2 @@
+// Custom logging function that writes the log messages to a buffer together with the console. This is useful for debugging when the device is not connected to a computer.
+int logs_to_buffer(const char *format, va_list args);

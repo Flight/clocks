@@ -1,9 +1,10 @@
-#include <stdio.h>
 #include <freertos/FreeRTOS.h>
 #include <freertos/task.h>
 #include <freertos/event_groups.h>
+#include <stdio.h>
 #include <nvs_flash.h>
 #include <esp_system.h>
+#include <esp_log.h>
 #include <time.h>
 
 #include "sdkconfig.h"
@@ -11,6 +12,7 @@
 
 #include "global_event_group.h"
 
+#include "logs_to_buffer/logs_to_buffer.h"
 #include "system_state/system_state.h"
 #include "led/led.h"
 #include "wifi/wifi.h"
@@ -30,6 +32,8 @@ static const char *TIMEZONE = CONFIG_TIMEZONE;
 
 void app_main(void)
 {
+  esp_log_set_vprintf(&logs_to_buffer);
+
   esp_err_t err = nvs_flash_init();
   if (err == ESP_ERR_NVS_NO_FREE_PAGES || err == ESP_ERR_NVS_NEW_VERSION_FOUND)
   {

@@ -1,6 +1,6 @@
-#include <inttypes.h>
 #include <freertos/FreeRTOS.h>
 #include <freertos/task.h>
+#include <inttypes.h>
 #include <driver/gpio.h>
 #include <esp_log.h>
 #include <string.h>

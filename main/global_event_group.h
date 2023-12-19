@@ -1,6 +1,8 @@
 #ifndef GLOBAL_EVENT_GROUP_H
 #define GLOBAL_EVENT_GROUP_H
 
+#include "global_constants.h"
+
 #include "freertos/event_groups.h"
 
 extern EventGroupHandle_t global_event_group;
@@ -13,7 +15,7 @@ extern EventGroupHandle_t global_event_group;
 #define IS_TIME_SET_BIT BIT5
 #define IS_TIME_FROM_NPT_UP_TO_DATE_BIT BIT6
 
-#define TEMPERATURE_ERROR_CODE -1000
+extern char global_log_buffer[LOG_BUFFER_SIZE];
 
 enum LightLevel
 {
