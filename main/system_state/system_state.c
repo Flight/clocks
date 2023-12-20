@@ -104,9 +104,8 @@ void show_last_uptime_before_out_of_memory()
 {
   uint32_t last_uptime_before_out_of_memory;
   size_t required_size = sizeof(last_uptime_before_out_of_memory);
-  esp_err_t err;
 
-  err = nvs_open(NVS_STORAGE_NAMESPACE, NVS_READONLY, &uptime_storage_handle);
+  esp_err_t err = nvs_open(NVS_STORAGE_NAMESPACE, NVS_READONLY, &uptime_storage_handle);
   if (err != ESP_OK)
   {
     return;
@@ -144,12 +143,11 @@ static void restart_if_free_heap_low()
 {
   uint32_t free_heap_kb = esp_get_free_heap_size() / 1024;
   uint32_t system_uptime = esp_log_timestamp();
-  esp_err_t err;
 
   if (free_heap_kb < AUTO_RESTART_IF_HEAP_LESS_KB)
   {
     // Save the system uptime to the RTC memory
-    err = nvs_open(NVS_STORAGE_NAMESPACE, NVS_READWRITE, &uptime_storage_handle);
+    esp_err_t err = nvs_open(NVS_STORAGE_NAMESPACE, NVS_READWRITE, &uptime_storage_handle);
     if (err != ESP_OK)
     {
       return;

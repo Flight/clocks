@@ -1,11 +1,13 @@
 #include <freertos/FreeRTOS.h>
 #include <freertos/task.h>
 #include <driver/gpio.h>
-#include "esp_adc/adc_oneshot.h"
+#include <esp_adc/adc_oneshot.h>
 #include <esp_log.h>
+#include <nvs.h>
 
 #include "sdkconfig.h"
-#include "../global_event_group.h"
+#include "global_constants.h"
+#include "global_event_group.h"
 
 #include "light.h"
 
@@ -16,50 +18,103 @@ uint8_t global_light_level_index = LIGHT_LEVEL_LOW;
 
 static const char *TAG = "Light Sensor";
 
+char *LIGHT_NVS_STORAGE_NAMESPACE = "light_settings";
+
 static const gpio_num_t LIGHT_SENSOR_PIN = CONFIG_LIGHT_SENSOR_PIN;
 
-static const uint16_t ADC_LOW_THRESHOLD = 600;
-static const uint16_t ADC_HIGH_THRESHOLD = 1500;
-static const uint16_t HYSTERESIS_MARGIN = 50;
+static uint16_t adc_low_threshold = 900;
+static uint16_t adc_high_threshold = 1500;
+static uint16_t adc_hysteresis_margin = 50;
 
 void update_light_level(int adc_value)
 {
-  // ESP_LOGI(TAG, "ADC average value: %d", adc_value);
+  // ESP_LOGI(TAG, "ADC average value: %d (global_light_level_index: %d)", adc_value, global_light_level_index);
+
   switch (global_light_level_index)
   {
   case LIGHT_LEVEL_LOW:
-    if (adc_value >= ADC_HIGH_THRESHOLD + HYSTERESIS_MARGIN)
+    if (adc_value >= adc_high_threshold)
     {
       global_light_level_index = LIGHT_LEVEL_HIGH;
     }
-    else if (adc_value >= ADC_LOW_THRESHOLD + HYSTERESIS_MARGIN)
+    else if (adc_value >= adc_low_threshold + adc_hysteresis_margin)
     {
       global_light_level_index = LIGHT_LEVEL_MEDIUM;
     }
     break;
 
   case LIGHT_LEVEL_MEDIUM:
-    if (adc_value < ADC_LOW_THRESHOLD)
+    if (adc_value < adc_low_threshold)
     {
       global_light_level_index = LIGHT_LEVEL_LOW;
     }
-    else if (adc_value >= ADC_HIGH_THRESHOLD + HYSTERESIS_MARGIN)
+    else if (adc_value >= adc_high_threshold + adc_hysteresis_margin)
     {
       global_light_level_index = LIGHT_LEVEL_HIGH;
     }
     break;
 
   case LIGHT_LEVEL_HIGH:
-    if (adc_value < ADC_LOW_THRESHOLD)
+    if (adc_value < adc_low_threshold)
     {
       global_light_level_index = LIGHT_LEVEL_LOW;
     }
-    else if (adc_value < ADC_HIGH_THRESHOLD)
+    else if (adc_value < adc_high_threshold)
     {
       global_light_level_index = LIGHT_LEVEL_MEDIUM;
     }
     break;
   }
+}
+
+static void check_nvs_settings()
+{
+  ESP_LOGI(TAG, "Checking NVS settings");
+
+  nvs_handle_t light_settings_storage_handle;
+  esp_err_t err = nvs_open(LIGHT_NVS_STORAGE_NAMESPACE, NVS_READWRITE, &light_settings_storage_handle);
+  if (err != ESP_OK)
+  {
+    ESP_LOGE(TAG, "Failed to open NVS handle: %s", esp_err_to_name(err));
+    return;
+  }
+
+  // Try reading the ADC thresholds from NVS
+  err = nvs_get_u16(light_settings_storage_handle, "adc_low", &adc_low_threshold);
+  if (err == ESP_ERR_NVS_NOT_FOUND)
+  {
+    ESP_LOGI(TAG, "Low threshold not found, saving the default: %d", adc_low_threshold);
+    nvs_set_u16(light_settings_storage_handle, "adc_low", adc_low_threshold);
+  }
+  else
+  {
+    ESP_LOGI(TAG, "Low threshold found: %d", adc_low_threshold);
+  }
+
+  err = nvs_get_u16(light_settings_storage_handle, "adc_high", &adc_high_threshold);
+  if (err == ESP_ERR_NVS_NOT_FOUND)
+  {
+    ESP_LOGI(TAG, "High threshold not found, saving the default: %d", adc_high_threshold);
+    nvs_set_u16(light_settings_storage_handle, "adc_high", adc_high_threshold);
+  }
+  else
+  {
+    ESP_LOGI(TAG, "High threshold found: %d", adc_high_threshold);
+  }
+
+  err = nvs_get_u16(light_settings_storage_handle, "adc_hysteresis", &adc_hysteresis_margin);
+  if (err == ESP_ERR_NVS_NOT_FOUND)
+  {
+    ESP_LOGI(TAG, "Hysteresis margin not found, saving the default: %d", adc_hysteresis_margin);
+    nvs_set_u16(light_settings_storage_handle, "adc_hysteresis", adc_hysteresis_margin);
+  }
+  else
+  {
+    ESP_LOGI(TAG, "Hysteresis margin found: %d", adc_hysteresis_margin);
+  }
+
+  nvs_commit(light_settings_storage_handle);
+  nvs_close(light_settings_storage_handle);
 }
 
 void light_sensor_task(void *pvParameter)
@@ -94,6 +149,9 @@ void light_sensor_task(void *pvParameter)
       .atten = ADC_ATTEN_DB_11,
   };
   adc_oneshot_config_channel(adc_handle, channel, &config);
+
+  check_nvs_settings();
+
   ESP_LOGI(TAG, "Init end");
 
   while (1)
