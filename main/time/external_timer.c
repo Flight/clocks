@@ -83,6 +83,6 @@ void external_timer_task(void *pvParameters)
 
     xEventGroupSetBits(global_event_group, IS_TIME_SET_BIT);
 
-    vTaskDelay(1000 * 10 * TIME_REFRESH_INTERVAL_MINS / portTICK_PERIOD_MS);
+    vTaskDelay(1000 * 60 * TIME_REFRESH_INTERVAL_MINS / portTICK_PERIOD_MS);
   }
 }
