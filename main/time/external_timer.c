@@ -60,26 +60,31 @@ static void copy_time_from_clocks_to_sytem_time()
   settimeofday(&now, NULL);
 }
 
-void external_timer_task(void *pvParameters)
+static void wait_for_ntp_time_task()
 {
-  ESP_LOGI(TAG, "Init");
-  ds3231_init_desc(&timer, 0, DS3231_SDA_PIN, DS3231_SCL_PIN);
-
   while (true)
   {
     EventBits_t uxBits = xEventGroupGetBits(global_event_group);
 
-    if (uxBits & IS_TIME_FROM_NPT_UP_TO_DATE_BIT)
-    {
-      ESP_LOGI(TAG, "Saving NTP time to clocks");
-      save_system_time_to_clocks();
-      xEventGroupClearBits(global_event_group, IS_TIME_FROM_NPT_UP_TO_DATE_BIT);
-    }
-    else
-    {
-      ESP_LOGI(TAG, "Applying the precise time from clocks");
-      copy_time_from_clocks_to_sytem_time();
-    }
+    ESP_LOGI(TAG, "Waiting for NTP time");
+    xEventGroupWaitBits(global_event_group, IS_TIME_FROM_NPT_UP_TO_DATE_BIT, pdFALSE, pdTRUE, portMAX_DELAY);
+
+    ESP_LOGI(TAG, "Saving NTP time to clocks");
+    save_system_time_to_clocks();
+    xEventGroupClearBits(global_event_group, IS_TIME_FROM_NPT_UP_TO_DATE_BIT);
+  }
+}
+
+void external_timer_task(void *pvParameters)
+{
+  ESP_LOGI(TAG, "Init");
+  ds3231_init_desc(&timer, 0, DS3231_SDA_PIN, DS3231_SCL_PIN);
+  xTaskCreatePinnedToCore(&wait_for_ntp_time_task, "NTP to DS3231", configMINIMAL_STACK_SIZE * 2, NULL, 1, NULL, 1);
+
+  while (true)
+  {
+    ESP_LOGI(TAG, "Applying the precise time from clocks");
+    copy_time_from_clocks_to_sytem_time();
 
     xEventGroupSetBits(global_event_group, IS_TIME_SET_BIT);
 
