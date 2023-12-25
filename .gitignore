@@ -11,3 +11,5 @@ sdkconfig.old
 
 *.pem
 ota_server/*.bin
+
+partition_table/

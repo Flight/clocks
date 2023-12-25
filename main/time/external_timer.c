@@ -64,8 +64,6 @@ static void wait_for_ntp_time_task()
 {
   while (true)
   {
-    EventBits_t uxBits = xEventGroupGetBits(global_event_group);
-
     ESP_LOGI(TAG, "Waiting for NTP time");
     xEventGroupWaitBits(global_event_group, IS_TIME_FROM_NPT_UP_TO_DATE_BIT, pdFALSE, pdTRUE, portMAX_DELAY);
 

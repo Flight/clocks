@@ -29,7 +29,7 @@ extern const uint8_t server_cert_pem_end[] asm("_binary_cert_pem_end");
 
 static const uint8_t TIME_BEFORE_UPDATE_CHECK_SECS = 10;
 
-static esp_partition_t *running_partition;
+static const esp_partition_t *running_partition;
 static esp_app_desc_t running_app_info;
 
 static size_t stored_hash_size = HASH_LEN;
