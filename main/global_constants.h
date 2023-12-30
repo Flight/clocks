@@ -3,6 +3,8 @@
 
 #define LOG_BUFFER_SIZE 20480
 #define TEMPERATURE_ERROR_CODE -1000
+#define LOGS_FILE_PATH "/spiffs/logs.txt"
+
 extern char *LIGHT_NVS_STORAGE_NAMESPACE;
 
 #endif // GLOBAL_CONSTANTS_H

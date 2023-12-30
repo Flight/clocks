@@ -49,7 +49,7 @@ void temperature_from_BMP280_sensor_task(void *pvParameter)
     xEventGroupClearBits(global_event_group, IS_INSIDE_TEMPERATURE_READING_DONE_BIT);
     if (bmp280_read_float(&sensor, &temperature, &pressure, &humidity) == ESP_OK)
     {
-      ESP_LOGI(TAG, "Pressure: %.2f Pa, Temperature: %.2f C", pressure, temperature);
+      ESP_LOGI(TAG, "Pressure: %.2f Pa, Temperature: %.2f° C", pressure, temperature);
       if (bme280p)
       {
         ESP_LOGI(TAG, "Humidity: %.2f\n", humidity);

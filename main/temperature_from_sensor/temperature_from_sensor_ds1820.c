@@ -56,7 +56,7 @@ void temperature_from_DS1820_sensor_task(void *pvParameter)
 
     if (ds18x20_measure_and_read(SENSOR_GPIO, sensor_address, &temperature) == ESP_OK)
     {
-      ESP_LOGI(TAG, "Temperature: %.2f °C", temperature);
+      ESP_LOGI(TAG, "Temperature: %.2f° C", temperature);
       global_inside_temperature = temperature;
       xEventGroupSetBits(global_event_group, IS_INSIDE_TEMPERATURE_READING_DONE_BIT);
     }

@@ -51,7 +51,7 @@ void temperature_from_SHT3X_sensor_task(void *pvParameter)
 
     if (sht3x_get_results(&sensor, &temperature, &humidity) == ESP_OK)
     {
-      ESP_LOGI(TAG, "Temperature: %.2f °C, %.2f %%\n", temperature, humidity);
+      ESP_LOGI(TAG, "Temperature: %.2f° C, %.2f %%\n", temperature, humidity);
       global_inside_temperature = temperature;
       xEventGroupSetBits(global_event_group, IS_INSIDE_TEMPERATURE_READING_DONE_BIT);
       vTaskDelay(1000 * 60 * REFRESH_INTERVAL_MINS / portTICK_PERIOD_MS);

@@ -9,7 +9,7 @@ static const char *TAG = "Webserver";
 extern const unsigned char html_index_html_start[] asm("_binary_index_html_start");
 extern const unsigned char html_index_html_end[] asm("_binary_index_html_end");
 
-#define SCRATCH_BUFSIZE 1024
+#define SCRATCH_BUFSIZE 8096
 
 struct file_server_data
 {
@@ -53,7 +53,6 @@ static esp_err_t get_index_page(httpd_req_t *req)
   char *response_data = malloc(response_data_size);
   if (!response_data)
   {
-    // Handle malloc failure
     free(html_page);
     return ESP_ERR_NO_MEM;
   }
@@ -65,7 +64,7 @@ static esp_err_t get_index_page(httpd_req_t *req)
   }
   else
   {
-    sprintf(inside_temperature_string, "%.2f°C", global_inside_temperature);
+    sprintf(inside_temperature_string, "%.2f° C", global_inside_temperature);
   }
 
   char outside_temperature_string[20];
@@ -75,7 +74,7 @@ static esp_err_t get_index_page(httpd_req_t *req)
   }
   else
   {
-    sprintf(outside_temperature_string, "%.2f°C", global_outside_temperature);
+    sprintf(outside_temperature_string, "%.2f° C", global_outside_temperature);
   }
 
   // Convert integer values to strings before using them in replace_placeholder
@@ -114,7 +113,7 @@ static esp_err_t get_favicon(httpd_req_t *req)
 
 static esp_err_t download_logs_file(httpd_req_t *req)
 {
-  FILE *logs_file = fopen("/spiffs/logs.txt", "r");
+  FILE *logs_file = fopen(LOGS_FILE_PATH, "r");
 
   if (!logs_file)
   {
@@ -124,10 +123,10 @@ static esp_err_t download_logs_file(httpd_req_t *req)
 
   ESP_LOGI(TAG, "File opened successfully");
 
-  httpd_resp_set_type(req, "text/html");
+  httpd_resp_set_type(req, "text/plain;charset=utf-8");
 
   fseek(logs_file, 0, SEEK_END);
-  long file_size = ftell(logs_file);
+  uint32_t file_size = ftell(logs_file);
   fseek(logs_file, 0, SEEK_SET);
   if (file_size == 0)
   {
@@ -135,11 +134,8 @@ static esp_err_t download_logs_file(httpd_req_t *req)
   }
   else
   {
-    ESP_LOGI(TAG, "Logs file size: %ld bytes", file_size);
+    ESP_LOGI(TAG, "Logs file size: %lu bytes", file_size);
   }
-
-  ESP_LOGI(TAG, "user_ctx address: %p", req->user_ctx);
-  ESP_LOGI(TAG, "req address: %p", req);
 
   char *chunk = ((struct file_server_data *)req->user_ctx)->scratch;
   size_t chunksize;
@@ -147,8 +143,6 @@ static esp_err_t download_logs_file(httpd_req_t *req)
   {
     /* Read file in chunks into the scratch buffer */
     chunksize = fread(chunk, 1, SCRATCH_BUFSIZE, logs_file);
-
-    ESP_LOGI(TAG, "Read file part of size: %d", chunksize);
 
     if (chunksize > 0)
     {
@@ -179,7 +173,7 @@ static httpd_handle_t start_webserver(void)
   if (server_data)
   {
     ESP_LOGE(TAG, "File server already started");
-    return ESP_ERR_INVALID_STATE;
+    return NULL;
   }
 
   /* Allocate memory for server data */
@@ -187,7 +181,7 @@ static httpd_handle_t start_webserver(void)
   if (!server_data)
   {
     ESP_LOGE(TAG, "Failed to allocate memory for server data");
-    return ESP_ERR_NO_MEM;
+    return NULL;
   }
 
   httpd_config_t config = HTTPD_DEFAULT_CONFIG();
