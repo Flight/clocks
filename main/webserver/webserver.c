@@ -1,5 +1,6 @@
 #include <esp_http_server.h>
 #include <esp_log.h>
+#include <esp_spiffs.h>
 
 #include "global_event_group.h"
 
@@ -7,6 +8,15 @@ static const char *TAG = "Webserver";
 
 extern const unsigned char html_index_html_start[] asm("_binary_index_html_start");
 extern const unsigned char html_index_html_end[] asm("_binary_index_html_end");
+
+#define SCRATCH_BUFSIZE 1024
+
+struct file_server_data
+{
+  /* Scratch buffer for temporary storage during file transfer */
+  char scratch[SCRATCH_BUFSIZE];
+};
+static struct file_server_data *server_data = NULL;
 
 static void replace_placeholder(char *buffer, size_t buffer_size, const char *placeholder, const char *replacement)
 {
@@ -26,13 +36,12 @@ static void replace_placeholder(char *buffer, size_t buffer_size, const char *pl
   }
 }
 
-static esp_err_t send_web_page(httpd_req_t *req)
+static esp_err_t get_index_page(httpd_req_t *req)
 {
   size_t index_html_size = html_index_html_end - html_index_html_start;
   char *html_page = malloc(index_html_size + 1);
   if (!html_page)
   {
-    // Handle malloc failure
     return ESP_ERR_NO_MEM;
   }
 
@@ -92,25 +101,124 @@ static esp_err_t send_web_page(httpd_req_t *req)
   return response;
 }
 
-static esp_err_t get_req_handler(httpd_req_t *req)
+static esp_err_t get_favicon(httpd_req_t *req)
 {
-  return send_web_page(req);
+  extern const unsigned char favicon_ico_start[] asm("_binary_favicon_ico_start");
+  extern const unsigned char favicon_ico_end[] asm("_binary_favicon_ico_end");
+  const size_t favicon_ico_size = (favicon_ico_end - favicon_ico_start);
+  httpd_resp_set_type(req, "image/x-icon");
+  httpd_resp_send(req, (const char *)favicon_ico_start, favicon_ico_size);
+
+  return ESP_OK;
 }
 
-static httpd_uri_t uri_get = {
-    .uri = "/",
-    .method = HTTP_GET,
-    .handler = get_req_handler,
-    .user_ctx = NULL};
+static esp_err_t download_logs_file(httpd_req_t *req)
+{
+  FILE *logs_file = fopen("/spiffs/logs.txt", "r");
+
+  if (!logs_file)
+  {
+    ESP_LOGE(TAG, "Failed to open file");
+    return ESP_FAIL;
+  }
+
+  ESP_LOGI(TAG, "File opened successfully");
+
+  httpd_resp_set_type(req, "text/html");
+
+  fseek(logs_file, 0, SEEK_END);
+  long file_size = ftell(logs_file);
+  fseek(logs_file, 0, SEEK_SET);
+  if (file_size == 0)
+  {
+    ESP_LOGI(TAG, "Logs file is empty");
+  }
+  else
+  {
+    ESP_LOGI(TAG, "Logs file size: %ld bytes", file_size);
+  }
+
+  ESP_LOGI(TAG, "user_ctx address: %p", req->user_ctx);
+  ESP_LOGI(TAG, "req address: %p", req);
+
+  char *chunk = ((struct file_server_data *)req->user_ctx)->scratch;
+  size_t chunksize;
+  do
+  {
+    /* Read file in chunks into the scratch buffer */
+    chunksize = fread(chunk, 1, SCRATCH_BUFSIZE, logs_file);
+
+    ESP_LOGI(TAG, "Read file part of size: %d", chunksize);
+
+    if (chunksize > 0)
+    {
+      /* Send the buffer contents as HTTP response chunk */
+      if (httpd_resp_send_chunk(req, chunk, chunksize) != ESP_OK)
+      {
+        ESP_LOGE(TAG, "File sending failed!");
+        /* Abort sending file */
+        httpd_resp_sendstr_chunk(req, NULL);
+        /* Respond with 500 Internal Server Error */
+        httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR, "Failed to send file");
+        return ESP_FAIL;
+      }
+    }
+    /* Keep looping till the whole file is sent */
+  } while (chunksize != 0);
+
+  fclose(logs_file);
+
+  ESP_LOGI(TAG, "File sending complete");
+  httpd_resp_set_hdr(req, "Connection", "close");
+  httpd_resp_send_chunk(req, NULL, 0);
+  return ESP_OK;
+}
 
 static httpd_handle_t start_webserver(void)
 {
+  if (server_data)
+  {
+    ESP_LOGE(TAG, "File server already started");
+    return ESP_ERR_INVALID_STATE;
+  }
+
+  /* Allocate memory for server data */
+  server_data = calloc(1, sizeof(struct file_server_data));
+  if (!server_data)
+  {
+    ESP_LOGE(TAG, "Failed to allocate memory for server data");
+    return ESP_ERR_NO_MEM;
+  }
+
   httpd_config_t config = HTTPD_DEFAULT_CONFIG();
   httpd_handle_t server = NULL;
 
+  httpd_uri_t uri_get_index = {
+      .uri = "/",
+      .method = HTTP_GET,
+      .handler = get_index_page,
+      .user_ctx = server_data,
+  };
+
+  httpd_uri_t uri_download_logs = {
+      .uri = "/logs",
+      .method = HTTP_GET,
+      .handler = download_logs_file,
+      .user_ctx = server_data,
+  };
+
+  httpd_uri_t uri_get_favicon = {
+      .uri = "/favicon.ico",
+      .method = HTTP_GET,
+      .handler = get_favicon,
+      .user_ctx = server_data,
+  };
+
   if (httpd_start(&server, &config) == ESP_OK)
   {
-    httpd_register_uri_handler(server, &uri_get);
+    httpd_register_uri_handler(server, &uri_get_index);
+    httpd_register_uri_handler(server, &uri_download_logs);
+    httpd_register_uri_handler(server, &uri_get_favicon);
   }
 
   return server;

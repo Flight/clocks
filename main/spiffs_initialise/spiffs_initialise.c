@@ -54,23 +54,4 @@ void spiffs_initialise()
       ESP_LOGI(TAG, "SPIFFS_check() successful");
     }
   }
-
-  FILE *logs_file = fopen("/spiffs/logs.txt", "r");
-  if (!logs_file)
-  {
-    ESP_LOGE(TAG, "Failed to open file");
-  }
-  else
-  {
-    char line[64];
-    fgets(line, sizeof(line), logs_file);
-    fclose(logs_file);
-    // strip newline
-    char *pos = strchr(line, '\n');
-    if (pos)
-    {
-      *pos = '\0';
-    }
-    ESP_LOGI(TAG, "Read from file: '%s'", line);
-  }
 }

@@ -15,11 +15,9 @@ static FILE *logs_file = NULL;
 char global_log_buffer[LOG_BUFFER_SIZE];
 static size_t log_buffer_len = 0;
 
-static char log_print_buffer[512];
-
 void open_logs_file()
 {
-  logs_file = fopen("/spiffs/logs.txt", "w");
+  logs_file = fopen("/spiffs/logs.txt", "a");
   if (!logs_file)
   {
     ESP_LOGE(TAG, "Failed to open log file");
@@ -48,11 +46,10 @@ static void add_logs_to_file(const char *format, va_list args)
 {
   if (logs_file != NULL)
   {
-    int written = vsnprintf(log_print_buffer, sizeof(log_print_buffer), format, args);
+    int written = vfprintf(logs_file, format, args);
 
     if (written >= 0)
     {
-      fputs(log_print_buffer, logs_file);
       fflush(logs_file);
     }
   }
