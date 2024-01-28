@@ -31,6 +31,7 @@
       .card {
         background-color: white;
         box-shadow: 2px 2px 12px 1px rgba(140, 140, 140, 0.5);
+        border-radius: 10px;
       }
       .cards {
         max-width: 700px;
@@ -65,6 +66,39 @@
         font-family: monospace;
         white-space: pre;
       }
+      .light-form {
+        margin: 20px 0;
+      }
+      .light-form__content {
+        display: flex;
+        justify-content: center;
+        gap: 20px;
+        align-items: center;
+        flex-wrap: wrap;
+      }
+       .light-form__input {
+        margin-top: 5px;
+       }
+       .light-form__button {
+        background-color: #0e7c7b;
+        color: white;
+        border: none;
+        padding: 10px;
+        font-size: 1.2rem;
+        cursor: pointer;
+        margin-top: 20px;
+        border-radius: 10px;
+       }
+      .restart-button {
+        background-color: #241d4b;
+        color: white;
+        border: none;
+        padding: 20px;
+        font-size: 1.2rem;
+        cursor: pointer;
+        margin-top: 40px;
+        border-radius: 10px;
+      }
     </style>
   </head>
   <body>
@@ -78,28 +112,28 @@
             <i class="fa-solid fa-temperature-three-quarters"></i>
             INSIDE TEMPERATURE
           </h4>
-          <p class="reading reading_temperature">{INSIDE_TEMPERATURE}</p>
+          <p class="reading reading_temperature">{{INSIDE_TEMPERATURE}}</p>
         </div>
         <div class="card">
           <h4>
             <i class="fa-solid fa-temperature-three-quarters"></i>
             OUTSIDE TEMPERATURE
           </h4>
-          <p class="reading reading_temperature"">{OUTSIDE_TEMPERATURE}</p>
+          <p class="reading reading_temperature"">{{OUTSIDE_TEMPERATURE}}</p>
         </div>
         <div class="card">
           <h4>
             <i class="fa-regular fa-lightbulb"></i>
             LIGHT LEVEL
           </h4>
-          <p class="reading reading_light"">{LIGHT_LEVEL} / {LIGHT_LEVELS_AMOUNT}</p>
+          <p class="reading reading_light"">{{LIGHT_LEVEL}} / {{LIGHT_LEVELS_AMOUNT}}</p>
         </div>
         <div class="card">
           <h4>
             <i class="fa-solid fa-code"></i>
             FIRMWARE VERSION
           </h4>
-          <p class="reading reading_version">{FIRMWARE_VERSION}</p>
+          <p class="reading reading_version">{{FIRMWARE_VERSION}}</p>
         </div>
       </div>
       <div class="card card_logs">
@@ -108,8 +142,73 @@
           LOGS
           <a href="/logs" target="_blank" title="Download full logs"><i class="fa-solid fa-download"></i></a>
         </h4>
-        <textarea class="textarea-logs" readonly resize="none">{LOGS}</textarea>
+        <textarea class="textarea-logs" readonly resize="none">{{LOGS}}</textarea>
       </div>
+      <section class="light-form">
+        <h4>
+          <i class="fa-solid fa-lightbulb"></i>
+          LIGHT SENSOR SETTINGS
+        </h4>
+        <form method="post" action="/light-settings" class="light-form__form" id="light-form">
+          <div class="light-form__content">
+            <label for="light_low">
+              Low threshold<br>
+              <input type="number" min="0" max="4095" id="light_low" id="adc_low_threshold" class="light-form__input" value="{{ADC_LOW_THRESHOLD}}">
+            </label>
+            <label for="light_high">
+              High threshold<br>
+              <input type="number" min="0" max="4095" id="light_high" id="adc_high_threshold" class="light-form__input" value="{{ADC_HIGH_THRESHOLD}}">
+            </label>
+            <label for="light_hysteresis">
+              Hysteresis margin<br>
+              <input type="number" min="0" max="4095" id="light_hysteresis" id="adc_hysteresis_margin" class="light-form__input" value="{{ADC_HYSTERESIS_MARGIN}}">
+            </label>
+          </div>
+          <button type="submit" class="light-form__button">Change</button>
+        </form>
+        <script>
+          const lightForm = document.getElementById("light-form");
+          lightForm.addEventListener("submit", (submitEvent) => {
+            submitEvent.preventDefault();
+
+            if (!confirm("Are you sure you want to change the light settings?")) {
+              return;
+            }
+
+            fetch("/light-settings", {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/x-www-form-urlencoded",
+              },
+              body: new FormData(lightForm),
+            });
+
+            // setTimeout(() => {
+            //   window.location.reload();
+            // }, 1000);
+          });
+        </script>
+      </section>
+      <button type="submit" id="restart" class="restart-button">
+        <i class="fa-solid fa-power-off"></i>
+        RESTART
+      </button>
     </div>
+    <script>
+      const restartButton = document.getElementById("restart");
+      restartButton.addEventListener("click", () => {
+        if (!confirm("Are you sure you want to restart the device?")) {
+          return;
+        }
+
+        fetch("/restart", {
+          method: "POST",
+        });
+
+        setTimeout(() => {
+          window.location.reload();
+        }, 5000);
+      });
+    </script>
   </body>
 </html>

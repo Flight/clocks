@@ -85,12 +85,16 @@ static esp_err_t get_index_page(httpd_req_t *req)
 
   strcpy(response_data, html_page);
 
-  replace_placeholder(response_data, response_data_size, "{INSIDE_TEMPERATURE}", inside_temperature_string);
-  replace_placeholder(response_data, response_data_size, "{OUTSIDE_TEMPERATURE}", outside_temperature_string);
-  replace_placeholder(response_data, response_data_size, "{LIGHT_LEVEL}", light_level_string);
-  replace_placeholder(response_data, response_data_size, "{LIGHT_LEVELS_AMOUNT}", light_levels_amount_string);
-  replace_placeholder(response_data, response_data_size, "{FIRMWARE_VERSION}", global_running_firmware_version);
-  replace_placeholder(response_data, response_data_size, "{LOGS}", global_log_buffer);
+  replace_placeholder(response_data, response_data_size, "{{INSIDE_TEMPERATURE}}", inside_temperature_string);
+  replace_placeholder(response_data, response_data_size, "{{OUTSIDE_TEMPERATURE}}", outside_temperature_string);
+  replace_placeholder(response_data, response_data_size, "{{LIGHT_LEVEL}}", light_level_string);
+  replace_placeholder(response_data, response_data_size, "{{LIGHT_LEVELS_AMOUNT}}", light_levels_amount_string);
+  replace_placeholder(response_data, response_data_size, "{{FIRMWARE_VERSION}}", global_running_firmware_version);
+  replace_placeholder(response_data, response_data_size, "{{LOGS}}", global_log_buffer);
+
+  // replace_placeholder(response_data, response_data_size, "{{ADC_LOW_THRESHOLD}}", adc_low_threshold);
+  // replace_placeholder(response_data, response_data_size, "{{ADC_HIGH_THRESHOLD}}", adc_high_threshold);
+  // replace_placeholder(response_data, response_data_size, "{{ADC_HYSTERESIS_MARGIN}}", adc_hysteresis_margin);
 
   esp_err_t response = httpd_resp_send(req, response_data, HTTPD_RESP_USE_STRLEN);
 
@@ -121,7 +125,7 @@ static esp_err_t download_logs_file(httpd_req_t *req)
     return ESP_FAIL;
   }
 
-  ESP_LOGI(TAG, "File opened successfully");
+  ESP_LOGI(TAG, "Logs file opened");
 
   httpd_resp_set_type(req, "text/plain;charset=utf-8");
 
@@ -149,7 +153,7 @@ static esp_err_t download_logs_file(httpd_req_t *req)
       /* Send the buffer contents as HTTP response chunk */
       if (httpd_resp_send_chunk(req, chunk, chunksize) != ESP_OK)
       {
-        ESP_LOGE(TAG, "File sending failed!");
+        ESP_LOGE(TAG, "Logs file sending failed!");
         /* Abort sending file */
         httpd_resp_sendstr_chunk(req, NULL);
         /* Respond with 500 Internal Server Error */
@@ -162,9 +166,50 @@ static esp_err_t download_logs_file(httpd_req_t *req)
 
   fclose(logs_file);
 
-  ESP_LOGI(TAG, "File sending complete");
+  ESP_LOGI(TAG, "Logs file sending complete");
   httpd_resp_set_hdr(req, "Connection", "close");
   httpd_resp_send_chunk(req, NULL, 0);
+  return ESP_OK;
+}
+
+static esp_err_t post_light_settings(httpd_req_t *req)
+{
+  ESP_LOGI(TAG, "POST /light-settings");
+  char buf[100];
+  int ret, remaining = req->content_len;
+
+  while (remaining > 0)
+  {
+    /* Read the data for the request */
+    if ((ret = httpd_req_recv(req, buf, MIN(remaining, sizeof(buf)))) <= 0)
+    {
+      if (ret == HTTPD_SOCK_ERR_TIMEOUT)
+      {
+        /* Retry receiving if timeout occurred */
+        continue;
+      }
+      return ESP_FAIL;
+    }
+
+    /* Send back the same data */
+    httpd_resp_send_chunk(req, buf, ret);
+    remaining -= ret;
+
+    /* Log data received */
+    ESP_LOGI(TAG, "=========== RECEIVED DATA ==========");
+    ESP_LOGI(TAG, "%.*s", ret, buf);
+    ESP_LOGI(TAG, "====================================");
+  }
+
+  // End response
+  httpd_resp_send_chunk(req, NULL, 0);
+  return ESP_OK;
+}
+
+static esp_err_t post_restart(httpd_req_t *req)
+{
+  ESP_LOGI(TAG, "POST ?restart");
+  esp_restart();
   return ESP_OK;
 }
 
@@ -194,13 +239,6 @@ static httpd_handle_t start_webserver(void)
       .user_ctx = server_data,
   };
 
-  httpd_uri_t uri_download_logs = {
-      .uri = "/logs",
-      .method = HTTP_GET,
-      .handler = download_logs_file,
-      .user_ctx = server_data,
-  };
-
   httpd_uri_t uri_get_favicon = {
       .uri = "/favicon.ico",
       .method = HTTP_GET,
@@ -208,11 +246,34 @@ static httpd_handle_t start_webserver(void)
       .user_ctx = server_data,
   };
 
+  httpd_uri_t uri_download_logs = {
+      .uri = "/logs",
+      .method = HTTP_GET,
+      .handler = download_logs_file,
+      .user_ctx = server_data,
+  };
+
+  httpd_uri_t uri_post_light_settings = {
+      .uri = "/light-settings",
+      .method = HTTP_POST,
+      .handler = post_light_settings,
+      .user_ctx = server_data,
+  };
+
+  httpd_uri_t uri_restart = {
+      .uri = "/restart",
+      .method = HTTP_POST,
+      .handler = post_restart,
+      .user_ctx = server_data,
+  };
+
   if (httpd_start(&server, &config) == ESP_OK)
   {
     httpd_register_uri_handler(server, &uri_get_index);
-    httpd_register_uri_handler(server, &uri_download_logs);
     httpd_register_uri_handler(server, &uri_get_favicon);
+    httpd_register_uri_handler(server, &uri_download_logs);
+    httpd_register_uri_handler(server, &uri_post_light_settings);
+    httpd_register_uri_handler(server, &uri_restart);
   }
 
   return server;
