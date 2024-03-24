@@ -226,7 +226,6 @@ static esp_err_t post_light_settings(httpd_req_t *req)
   if (ptr)
     sscanf(ptr, "adc_hysteresis_margin=%hu", &new_adc_hysteresis_margin);
 
-  ESP_LOGI(TAG, "Raw POST data: %s", buf);
   ESP_LOGI(TAG, "Parsed light_low: %d", new_adc_low_threshold);
   ESP_LOGI(TAG, "Parsed light_high: %d", new_adc_high_threshold);
   ESP_LOGI(TAG, "Parsed light_hysteresis: %d", new_adc_hysteresis_margin);

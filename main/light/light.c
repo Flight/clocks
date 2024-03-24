@@ -32,6 +32,19 @@ void set_adc_thresholds(uint16_t low, uint16_t high, uint16_t hysteresis)
   adc_high_threshold = high;
   adc_hysteresis_margin = hysteresis;
   xEventGroupSetBits(global_event_group, LIGHT_THRESHOLD_CHANGED_BIT);
+
+  ESP_LOGI(TAG, "Saving new light settings to NVS");
+  nvs_handle_t light_settings_storage_handle;
+  esp_err_t err = nvs_open(LIGHT_NVS_STORAGE_NAMESPACE, NVS_READWRITE, &light_settings_storage_handle);
+  if (err != ESP_OK)
+  {
+    ESP_LOGE(TAG, "Failed to open NVS handle: %s", esp_err_to_name(err));
+    return;
+  }
+
+  nvs_set_u16(light_settings_storage_handle, "adc_low", adc_low_threshold);
+  nvs_set_u16(light_settings_storage_handle, "adc_high", adc_high_threshold);
+  nvs_set_u16(light_settings_storage_handle, "adc_hysteresis", adc_hysteresis_margin);
 }
 
 void update_light_level(int adc_value)
