@@ -2,7 +2,10 @@
 #include <esp_log.h>
 #include <esp_spiffs.h>
 
+#include "global_constants.h"
 #include "global_event_group.h"
+
+#include "../light/light.h"
 
 static const char *TAG = "Webserver";
 
@@ -57,7 +60,7 @@ static esp_err_t get_index_page(httpd_req_t *req)
     return ESP_ERR_NO_MEM;
   }
 
-  char inside_temperature_string[20];
+  char inside_temperature_string[32];
   if (global_inside_temperature == TEMPERATURE_ERROR_CODE)
   {
     strcpy(inside_temperature_string, "N/A");
@@ -67,7 +70,7 @@ static esp_err_t get_index_page(httpd_req_t *req)
     sprintf(inside_temperature_string, "%.2f° C", global_inside_temperature);
   }
 
-  char outside_temperature_string[20];
+  char outside_temperature_string[32];
   if (global_outside_temperature == TEMPERATURE_ERROR_CODE)
   {
     strcpy(outside_temperature_string, "N/A");
@@ -78,10 +81,19 @@ static esp_err_t get_index_page(httpd_req_t *req)
   }
 
   // Convert integer values to strings before using them in replace_placeholder
-  char light_level_string[20];
+  char light_level_string[6];
+  char light_levels_amount_string[6];
+
+  char low_threshold_str[6];
+  char high_threshold_str[6];
+  char hysteresis_margin_str[6];
+
   sprintf(light_level_string, "%d", global_light_level_index + 1);
-  char light_levels_amount_string[20];
   sprintf(light_levels_amount_string, "%d", LIGHT_LEVELS_AMOUNT);
+
+  snprintf(low_threshold_str, sizeof(low_threshold_str), "%u", adc_low_threshold);
+  snprintf(high_threshold_str, sizeof(high_threshold_str), "%u", adc_high_threshold);
+  snprintf(hysteresis_margin_str, sizeof(hysteresis_margin_str), "%u", adc_hysteresis_margin);
 
   strcpy(response_data, html_page);
 
@@ -92,9 +104,9 @@ static esp_err_t get_index_page(httpd_req_t *req)
   replace_placeholder(response_data, response_data_size, "{{FIRMWARE_VERSION}}", global_running_firmware_version);
   replace_placeholder(response_data, response_data_size, "{{LOGS}}", global_log_buffer);
 
-  // replace_placeholder(response_data, response_data_size, "{{ADC_LOW_THRESHOLD}}", adc_low_threshold);
-  // replace_placeholder(response_data, response_data_size, "{{ADC_HIGH_THRESHOLD}}", adc_high_threshold);
-  // replace_placeholder(response_data, response_data_size, "{{ADC_HYSTERESIS_MARGIN}}", adc_hysteresis_margin);
+  replace_placeholder(response_data, response_data_size, "{{ADC_LOW_THRESHOLD}}", low_threshold_str);
+  replace_placeholder(response_data, response_data_size, "{{ADC_HIGH_THRESHOLD}}", high_threshold_str);
+  replace_placeholder(response_data, response_data_size, "{{ADC_HYSTERESIS_MARGIN}}", hysteresis_margin_str);
 
   esp_err_t response = httpd_resp_send(req, response_data, HTTPD_RESP_USE_STRLEN);
 
@@ -175,31 +187,52 @@ static esp_err_t download_logs_file(httpd_req_t *req)
 static esp_err_t post_light_settings(httpd_req_t *req)
 {
   ESP_LOGI(TAG, "POST /light-settings");
-  char buf[100];
-  int ret, remaining = req->content_len;
+  char buf[256]; // Increase buffer size if necessary
+  int ret, received = 0;
 
-  while (remaining > 0)
+  // Read the data for the request
+  while (received < req->content_len)
   {
-    /* Read the data for the request */
-    if ((ret = httpd_req_recv(req, buf, MIN(remaining, sizeof(buf)))) <= 0)
+    if ((ret = httpd_req_recv(req, buf + received, MIN(req->content_len - received, sizeof(buf) - received - 1))) <= 0)
     {
       if (ret == HTTPD_SOCK_ERR_TIMEOUT)
       {
-        /* Retry receiving if timeout occurred */
         continue;
       }
       return ESP_FAIL;
     }
-
-    /* Send back the same data */
-    httpd_resp_send_chunk(req, buf, ret);
-    remaining -= ret;
-
-    /* Log data received */
-    ESP_LOGI(TAG, "=========== RECEIVED DATA ==========");
-    ESP_LOGI(TAG, "%.*s", ret, buf);
-    ESP_LOGI(TAG, "====================================");
+    received += ret;
   }
+  buf[received] = '\0'; // Null-terminate the buffer
+
+  // Log data received
+  ESP_LOGI(TAG, "=========== RECEIVED DATA ==========");
+  ESP_LOGI(TAG, "%s", buf);
+  ESP_LOGI(TAG, "====================================");
+
+  // Parse the buffer and update the settings
+  char *ptr;
+  uint16_t new_adc_low_threshold, new_adc_high_threshold, new_adc_hysteresis_margin;
+
+  ptr = strstr(buf, "adc_low_threshold=");
+  if (ptr)
+    sscanf(ptr, "adc_low_threshold=%hu", &new_adc_low_threshold);
+
+  ptr = strstr(buf, "adc_high_threshold=");
+  if (ptr)
+    sscanf(ptr, "adc_high_threshold=%hu", &new_adc_high_threshold);
+
+  ptr = strstr(buf, "adc_hysteresis_margin=");
+  if (ptr)
+    sscanf(ptr, "adc_hysteresis_margin=%hu", &new_adc_hysteresis_margin);
+
+  ESP_LOGI(TAG, "Raw POST data: %s", buf);
+  ESP_LOGI(TAG, "Parsed light_low: %d", new_adc_low_threshold);
+  ESP_LOGI(TAG, "Parsed light_high: %d", new_adc_high_threshold);
+  ESP_LOGI(TAG, "Parsed light_hysteresis: %d", new_adc_hysteresis_margin);
+
+  // Update the global variables
+  set_adc_thresholds(new_adc_low_threshold, new_adc_high_threshold, new_adc_hysteresis_margin);
 
   // End response
   httpd_resp_send_chunk(req, NULL, 0);

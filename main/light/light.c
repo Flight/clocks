@@ -22,9 +22,17 @@ char *LIGHT_NVS_STORAGE_NAMESPACE = "light_settings";
 
 static const gpio_num_t LIGHT_SENSOR_PIN = CONFIG_LIGHT_SENSOR_PIN;
 
-static uint16_t adc_low_threshold = 900;
-static uint16_t adc_high_threshold = 1500;
-static uint16_t adc_hysteresis_margin = 50;
+uint16_t adc_low_threshold = 900;
+uint16_t adc_high_threshold = 1500;
+uint16_t adc_hysteresis_margin = 50;
+
+void set_adc_thresholds(uint16_t low, uint16_t high, uint16_t hysteresis)
+{
+  adc_low_threshold = low;
+  adc_high_threshold = high;
+  adc_hysteresis_margin = hysteresis;
+  xEventGroupSetBits(global_event_group, LIGHT_THRESHOLD_CHANGED_BIT);
+}
 
 void update_light_level(int adc_value)
 {

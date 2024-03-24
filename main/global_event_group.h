@@ -14,6 +14,7 @@ extern EventGroupHandle_t global_event_group;
 #define IS_WIFI_FAILED_BIT BIT4
 #define IS_TIME_SET_BIT BIT5
 #define IS_TIME_FROM_NPT_UP_TO_DATE_BIT BIT6
+#define LIGHT_THRESHOLD_CHANGED_BIT BIT7
 
 extern char global_log_buffer[LOG_BUFFER_SIZE];
 

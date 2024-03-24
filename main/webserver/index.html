@@ -72,12 +72,13 @@
       .light-form__content {
         display: flex;
         justify-content: center;
-        gap: 20px;
+        gap: 8px;
         align-items: center;
         flex-wrap: wrap;
       }
        .light-form__input {
         margin-top: 5px;
+        font-size: 24px;
        }
        .light-form__button {
         background-color: #0e7c7b;
@@ -153,15 +154,15 @@
           <div class="light-form__content">
             <label for="light_low">
               Low threshold<br>
-              <input type="number" min="0" max="4095" id="light_low" id="adc_low_threshold" class="light-form__input" value="{{ADC_LOW_THRESHOLD}}">
+              <input type="number" min="0" max="4095" name="adc_low_threshold" class="light-form__input" value="{{ADC_LOW_THRESHOLD}}">
             </label>
             <label for="light_high">
               High threshold<br>
-              <input type="number" min="0" max="4095" id="light_high" id="adc_high_threshold" class="light-form__input" value="{{ADC_HIGH_THRESHOLD}}">
+              <input type="number" min="0" max="4095" name="adc_high_threshold" class="light-form__input" value="{{ADC_HIGH_THRESHOLD}}">
             </label>
             <label for="light_hysteresis">
               Hysteresis margin<br>
-              <input type="number" min="0" max="4095" id="light_hysteresis" id="adc_hysteresis_margin" class="light-form__input" value="{{ADC_HYSTERESIS_MARGIN}}">
+              <input type="number" min="0" max="4095" name="adc_hysteresis_margin" class="light-form__input" value="{{ADC_HYSTERESIS_MARGIN}}">
             </label>
           </div>
           <button type="submit" class="light-form__button">Change</button>
@@ -175,18 +176,21 @@
               return;
             }
 
+            const formData = new FormData(lightForm);
+            const formBody = new URLSearchParams(formData).toString();
+
             fetch("/light-settings", {
               method: "POST",
               headers: {
                 "Content-Type": "application/x-www-form-urlencoded",
               },
-              body: new FormData(lightForm),
+              body: formBody,
             });
-
-            // setTimeout(() => {
-            //   window.location.reload();
-            // }, 1000);
           });
+
+          setTimeout(() => {
+            window.location.reload();
+          }, 1000);
         </script>
       </section>
       <button type="submit" id="restart" class="restart-button">
