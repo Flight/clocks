@@ -37,26 +37,30 @@ static void save_system_time_to_clocks()
   }
   else
   {
-    ESP_LOGI(TAG, "Time saved to the clocks: %s", strftime_buf);
+    ESP_LOGI(TAG, "Local time saved to the clocks: %s", strftime_buf);
   }
 }
 
 static void copy_time_from_clocks_to_sytem_time()
 {
-  struct tm time_from_clocks;
-  if (ds3231_get_time(&timer, &time_from_clocks) != ESP_OK)
+  struct tm timestamp_from_clocks;
+  if (ds3231_get_time(&timer, &timestamp_from_clocks) != ESP_OK)
   {
     ESP_LOGE(TAG, "Could not get time. Module is not connected or the CR2032 battery is low.");
     return;
   }
 
-  time_t timestamp = mktime(&time_from_clocks);
+  // Removing daylight flag as mktime will apply it again
+  // https://stackoverflow.com/a/68489361/2404985
+  timestamp_from_clocks.tm_isdst = -1;
 
-  ESP_LOGI(TAG, "Timestamp from clocks (secs) : %lld", (long long)timestamp);
+  time_t timestamp = mktime(&timestamp_from_clocks);
+
+  ESP_LOGI(TAG, "Local timestamp from clocks (secs) : %lld", (long long)timestamp);
   struct timeval now = {
       .tv_sec = timestamp,
       .tv_usec = 0};
-  // The timezone was already set by main, so the second parameter is NULL
+
   settimeofday(&now, NULL);
 }
 
