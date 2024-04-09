@@ -25,7 +25,7 @@ static const uint8_t MAX_BRIGHTNESS = 7;
 static uint8_t current_brightness = 0;
 
 static const uint8_t DIGITS_AMOUNT = 4;
-static const uint8_t SECONDS_UNTIL_TEMPERATURE_SHOWN = 20;
+static const uint8_t SECONDS_UNTIL_TEMPERATURE_SHOWN = 15;
 static const uint8_t SECONDS_TO_SHOW_EACH_TEMPERATURE = 5;
 static const uint8_t CIRCLE_LOOP_LENGTH = 32;
 
@@ -196,13 +196,13 @@ void lcd_tm1637_task(void *pvParameter)
     if ((display_temperature || seconds_time_shown > SECONDS_UNTIL_TEMPERATURE_SHOWN) && seconds_temperature_shown < SECONDS_TO_SHOW_EACH_TEMPERATURE * 2)
     {
       display_temperature = true;
-      if (uxBits & IS_INSIDE_TEMPERATURE_READING_DONE_BIT && global_inside_temperature != -1000 && seconds_temperature_shown < SECONDS_TO_SHOW_EACH_TEMPERATURE)
-      {
-        show_temperature(global_inside_temperature);
-      }
-      else if (uxBits & IS_OUTSIDE_WEATHER_READING_DONE_BIT && global_outside_temperature != -1000 && seconds_temperature_shown < SECONDS_TO_SHOW_EACH_TEMPERATURE * 2)
+      if (uxBits & IS_OUTSIDE_WEATHER_READING_DONE_BIT && global_outside_temperature != -1000 && seconds_temperature_shown < SECONDS_TO_SHOW_EACH_TEMPERATURE)
       {
         show_temperature(global_outside_temperature);
+      }
+      else if (uxBits & IS_INSIDE_TEMPERATURE_READING_DONE_BIT && global_inside_temperature != -1000 && seconds_temperature_shown < SECONDS_TO_SHOW_EACH_TEMPERATURE * 2)
+      {
+        show_temperature(global_inside_temperature);
       }
 
       seconds_temperature_shown++;
